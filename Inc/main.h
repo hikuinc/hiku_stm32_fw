@@ -132,7 +132,7 @@
 #define INTERNAL_BUFF_SIZE                    64*DEFAULT_AUDIO_IN_FREQ/16000*DEFAULT_AUDIO_IN_CHANNEL_NBR
 /* PCM buffer output size */
 #define PCM_OUT_SIZE                          DEFAULT_AUDIO_IN_FREQ/1000
-#define AUDIO_SAMP_PER_PACKET                 30
+#define AUDIO_SAMP_PER_PACKET                 8
 #define PACKET_HDR                            0xDEADBEEF
 #define PACKET_TYPE_FIELD                     4
 #define PACKET_LEN_FIELD                      5
