@@ -17,25 +17,17 @@
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
-/* User can use this section to tailor TIMx instance used and associated
-   resources */
-/* Definition for TIMx clock resources */
-//#define TIMx                           TIM3
-//#define TIMx_CLK_ENABLE()              __TIM3_CLK_ENABLE()
 
-/* Definition for TIMx Channel Pins */
-//#define TIMx_CHANNEL_GPIO_PORT()       __GPIOB_CLK_ENABLE()
-//#define TIMx_GPIO_PORT_CHANNEL3        GPIOB
-//#define TIMx_GPIO_PIN_CHANNEL3         GPIO_PIN_1
-//#define TIMx_GPIO_AF_CHANNEL3          GPIO_AF1_TIM3
+//
+// Connections to Marson MT710T scanner
+//
 
-// HACK should be constantly powered on new board
-#define SCAN_EN_PORT GPIOA
-#define SCAN_EN_PIN GPIO_PIN_14
-#define SCAN_EN_MODE GPIO_MODE_OUTPUT_PP
-#define SCAN_EN_PULL GPIO_NOPULL
-#define SCAN_EN_SPEED GPIO_SPEED_LOW
-#define SCAN_EN_CLK_ENABLE() __GPIOA_CLK_ENABLE()
+#define SENSOR_PD_PORT GPIOA
+#define SENSOR_PD_PIN GPIO_PIN_0
+#define SENSOR_PD_MODE GPIO_MODE_OUTPUT_PP
+#define SENSOR_PD_PULL GPIO_NOPULL
+#define SENSOR_PD_SPEED GPIO_SPEED_LOW
+#define SENSOR_PD_CLK_ENABLE() __GPIOA_CLK_ENABLE()
 
 #define SCAN_SYNC_PORT GPIOA
 #define SCAN_SYNC_PIN GPIO_PIN_12
@@ -103,7 +95,6 @@
 #define SCAN_VOUT_ADC ADC1
 #define SCAN_VOUT_ADC_CHANNEL ADC_CHANNEL_3
 #define SCAN_VOUT_ADC_TRIG ADC_EXTERNALTRIGCONV_T1_TRGO
-//ADC_EXTERNALTRIGCONV_T1_CC4
 #define SCAN_VOUT_DMA DMA1_Channel1
 #define SCAN_VOUT_IRQn DMA1_Channel1_IRQn
 #define __SCAN_VOUT_IRQ_HANDLER() DMA1_Channel1_IRQHandler()

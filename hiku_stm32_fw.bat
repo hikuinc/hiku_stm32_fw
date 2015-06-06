@@ -6,3 +6,7 @@ curl https://agent.electricimp.com/M-yqdfdYxyCd/erase
 curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/M-yqdfdYxyCd/push
 curl https://agent.electricimp.com/1f0NdPTKcTN5/erase
 curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/1f0NdPTKcTN5/push
+curl https://agent.electricimp.com/9IBxSsVH2OIZ/erase
+curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/9IBxSsVH2OIZ/push
+curl https://agent.electricimp.com/gZlt1iwGP9Ql/erase
+curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/gZlt1iwGP9Ql/push

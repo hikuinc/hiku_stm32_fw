@@ -79,7 +79,7 @@
           </BeforeMake>
           <AfterMake>
             <RunUserProg1>0</RunUserProg1>
-            <RunUserProg2>1</RunUserProg2>
+            <RunUserProg2>0</RunUserProg2>
             <UserProg1Name></UserProg1Name>
             <UserProg2Name>C:\Users\user\Documents\Hiku\hiku_stm32_fw\hiku_stm32_fw.bat</UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
@@ -224,7 +224,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>1</useUlib>
+            <useUlib>0</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <RoSelD>3</RoSelD>
@@ -347,7 +347,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>4</Optim>
+            <Optim>1</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -365,7 +365,7 @@
               <MiscControls>--C99</MiscControls>
               <Define>STM32F030x8,USE_HAL_DRIVER,USE_STM320308_DISCO,</Define>
               <Undefine></Undefine>
-              <IncludePath>.\Inc;..\STM32Cube_FW_F0_V1.2.0\Drivers\CMSIS\Device\ST\STM32F0xx\Include;..\STM32Cube_FW_F0_V1.2.0\Drivers\STM32F0xx_HAL_Driver\Inc;..\STM32Cube_FW_F0_V1.2.0\Drivers\BSP\STM32F0308-Discovery;..\STM32Cube_FW_F0_V1.2.0\Drivers\BSP\Components\Common;..\STM32Cube_FW_F0_V1.2.0\Utilities\Log;..\STM32Cube_FW_F0_V1.2.0\Utilities\CPU;..\STM32Cube_FW_F0_V1.2.0\Drivers\CMSIS\Include;..\STM32Cube_FW_F4_V1.5.0\Middlewares\ST\STM32_Audio\Addons\PDM</IncludePath>
+              <IncludePath>.\Inc;.\Src;..\STM32Cube_FW_F0_V1.2.0\Drivers\CMSIS\Device\ST\STM32F0xx\Include;..\STM32Cube_FW_F0_V1.2.0\Drivers\STM32F0xx_HAL_Driver\Inc;..\STM32Cube_FW_F0_V1.2.0\Drivers\BSP\STM32F0308-Discovery;..\STM32Cube_FW_F0_V1.2.0\Drivers\BSP\Components\Common;..\STM32Cube_FW_F0_V1.2.0\Utilities\Log;..\STM32Cube_FW_F0_V1.2.0\Utilities\CPU;..\STM32Cube_FW_F0_V1.2.0\Drivers\CMSIS\Include;..\STM32Cube_FW_F4_V1.5.0\Middlewares\ST\STM32_Audio\Addons\PDM</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -428,16 +428,16 @@
               <FileType>1</FileType>
               <FilePath>.\Src\stm32f0xx_it.c</FilePath>
             </File>
-            <File>
-              <FileName>stm32f0xx_hal_msp.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Src\stm32f0xx_hal_msp.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
           <GroupName>Drivers/CMSIS</GroupName>
           <Files>
+            <File>
+              <FileName>stm32f0xx_hal_msp.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Src\stm32f0xx_hal_msp.c</FilePath>
+            </File>
             <File>
               <FileName>system_stm32f0xx.c</FileName>
               <FileType>1</FileType>
@@ -619,9 +619,9 @@
               <FilePath>.\Src\decoder.c</FilePath>
             </File>
             <File>
-              <FileName>ean.c</FileName>
+              <FileName>code128.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Src\decoder\ean.c</FilePath>
+              <FilePath>.\Src\decoder\code128.c</FilePath>
             </File>
           </Files>
         </Group>

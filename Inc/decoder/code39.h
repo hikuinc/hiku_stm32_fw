@@ -27,7 +27,7 @@
 typedef struct code39_decoder_s {
     unsigned direction : 1;     /* scan direction: 0=fwd, 1=rev */
     unsigned element : 4;       /* element offset 0-8 */
-    int character : 12;         /* character position in symbol */
+    short int character;        /* character position in symbol */
     unsigned s9;                /* current character width */
     unsigned width;             /* last character width */
 

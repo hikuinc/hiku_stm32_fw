@@ -113,13 +113,9 @@ void UART_Config(void) {
 	HAL_NVIC_SetPriority(USARTx_DMA_TX_IRQn, 0x03, 0x00);
 	HAL_NVIC_SetPriority(USARTx_DMA_RX_IRQn, 0x03, 0x00);
 	
-  // HACK HACK HACK
-	// Find a proper way to do UART DMA remap to channels 4 and 5
-	//SYSCFG->CFGR1 |= HAL_REMAPDMA_USART1_TX_DMA_CH4 | HAL_REMAPDMA_USART1_RX_DMA_CH5;
 }
 
-// HACK should be replaced with proper packet format  
-
+// Send string via UART
 void SendString(char* data_string){
 	uint32_t char_count=0;	
 	while (char_count<255 && data_string[char_count] != 0) char_count++;
@@ -186,19 +182,6 @@ static void symbol_handler (zbar_decoder_t *dcode)
     if(type <= ZBAR_PARTIAL)
         return;
 		
-		// HACK HACK HACK
-		/*
-    ean_symbol[0] = '1';
-    ean_symbol[1] = '2';
-    ean_symbol[2] = '\n';
-    ean_symbol[3] = '\r';
-    ean_symbol[4] = 0;
-		scan_decoded = 1;
-	  SendString((char *) ean_symbol);
-		*/
-
-    //assert((type == ZBAR_EAN13) || (type == ZBAR_UPCA));
-
     const char *data = zbar_decoder_get_data(dcode);
     unsigned datalen = zbar_decoder_get_data_length(dcode);
 
@@ -222,30 +205,21 @@ static void symbol_handler (zbar_decoder_t *dcode)
 		      ScanPacketBuf[PACKET_HDR_LEN + i+1] = '\n';
 		      ScanPacketBuf[PACKET_HDR_LEN + i+2] = 0;
 					scan_decoded = 1;
-					//SendString((char *) ean_symbol);		
+					//scan result is sent in the main loop
 				}					
     }
     else
     	sym_count = 0;
-
 }
 
+/* turn on scanner LED on/off */
 void setScannerLED (uint8_t value) {
-	if (value)
-		/* turn on scanner LED on */
-	  HAL_GPIO_WritePin(SCAN_ON_LED_PORT, SCAN_ON_LED_PIN, GPIO_PIN_SET);
-	else
-		/* turn on scanner LED off */
-	  HAL_GPIO_WritePin(SCAN_ON_LED_PORT, SCAN_ON_LED_PIN, GPIO_PIN_RESET);
+	  HAL_GPIO_WritePin(SCAN_ON_LED_PORT, SCAN_ON_LED_PIN, value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
-void setScannerPower (uint8_t value) {
-	if (value)
-		/* turn on scanner LED on */
-	  HAL_GPIO_WritePin(SCAN_EN_PORT, SCAN_EN_PIN, GPIO_PIN_SET); 
-	else
-		/* turn on scanner LED off */
-	  HAL_GPIO_WritePin(SCAN_EN_PORT, SCAN_EN_PIN, GPIO_PIN_RESET); 
+/* set scanner image sensor gain high/low */
+void setScannerGAIN (uint8_t value) {
+	HAL_GPIO_WritePin(SCAN_GS_PORT, SCAN_GS_PIN, value ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
 void toggleDebug() {
@@ -259,19 +233,19 @@ void Img_Scanner_Configuration(void)
 	TIM_MasterConfigTypeDef sMasterConfig;
   TIM_OC_InitTypeDef sConfig;
   ADC_ChannelConfTypeDef        adc_sConfig;
-
-
-  /*
-  *  Scanner power enable PA14
-  */
-	SCAN_EN_CLK_ENABLE();
-  GPIO_InitStruct.Pin = SCAN_EN_PIN;
-  GPIO_InitStruct.Mode = SCAN_EN_MODE;
-  GPIO_InitStruct.Pull = SCAN_EN_PULL;
-  GPIO_InitStruct.Speed = SCAN_EN_SPEED;
-  HAL_GPIO_Init(SCAN_EN_PORT, &GPIO_InitStruct);  
-  HAL_GPIO_WritePin(SCAN_EN_PORT, SCAN_EN_PIN, GPIO_PIN_SET); 
 		
+  /*
+  *  Image sensor chip enable (active low), MT710T SENSOR_PD/pin 8
+  */
+	SENSOR_PD_CLK_ENABLE();
+  GPIO_InitStruct.Pin = SENSOR_PD_PIN;
+  GPIO_InitStruct.Mode = SENSOR_PD_MODE;
+  GPIO_InitStruct.Pull = SENSOR_PD_PULL;
+  GPIO_InitStruct.Speed = SENSOR_PD_SPEED;
+  HAL_GPIO_Init(SENSOR_PD_PORT, &GPIO_InitStruct);  
+  /* enable image sensor */
+  HAL_GPIO_WritePin(SENSOR_PD_PORT, SENSOR_PD_PIN, GPIO_PIN_RESET); 
+
   /*
   *  Scanner LED enable PA6, MT700 pin 3
   */
@@ -285,7 +259,7 @@ void Img_Scanner_Configuration(void)
   HAL_GPIO_WritePin(SCAN_ON_LED_PORT, SCAN_ON_LED_PIN, GPIO_PIN_RESET); 
 	
   /*
-  *  Image gain PA15, MT700 pin 2
+  *  Image gain, MT710T GS/pin 2
   */
 	SCAN_GS_CLK_ENABLE();
   GPIO_InitStruct.Pin = SCAN_GS_PIN;
@@ -297,7 +271,7 @@ void Img_Scanner_Configuration(void)
   HAL_GPIO_WritePin(SCAN_GS_PORT, SCAN_GS_PIN, GPIO_PIN_SET); 
 
   /*
-  *  Scan line start/end PA12, MT700 pin 1
+  *  Scan line start/end, MT710T SYNC/pin 1
   */
 	SCAN_SYNC_CLK_ENABLE();
   GPIO_InitStruct.Pin = SCAN_SYNC_PIN;
@@ -306,12 +280,12 @@ void Img_Scanner_Configuration(void)
   GPIO_InitStruct.Speed = SCAN_SYNC_SPEED;
   HAL_GPIO_Init(SCAN_SYNC_PORT, &GPIO_InitStruct);  
 
-  /* Enable and set EOS EXTI Interrupt to the highest priority */
+  /* Enable and set EOS EXTI Interrupt to the second highest priority */
   HAL_NVIC_SetPriority(SCAN_SYNC_EXTI_IRQn, 0x01, 0x00);
   HAL_NVIC_EnableIRQ(SCAN_SYNC_EXTI_IRQn);
   	
   /*
-  *  Scanner start capture signal PA4, MT700 pin 6
+  *  Scanner start pulse signal, MT710T SP/pin 6
   */			 
 
   TimHandleSp.Instance = SCAN_SP_TIM;
@@ -335,7 +309,7 @@ void Img_Scanner_Configuration(void)
   HAL_NVIC_EnableIRQ(SCAN_SP_IRQn);
 
   /*
-  *  Scanner clock signal PA8, MT700 pin 7
+  *  Scanner clock pulse signal, MT710T CP/pin 7
   */
   TimHandle.Instance = SCAN_CP_TIM;
   TimHandle.Init.Prescaler         = SCAN_CP_PRESCALER;
@@ -345,7 +319,6 @@ void Img_Scanner_Configuration(void)
   TimHandle.Init.RepetitionCounter = 0;
   if (HAL_TIM_PWM_Init(&TimHandle) != HAL_OK) Error_Handler();
 
-  /* Common configuration for all channels */
   sConfig.OCMode       = TIM_OCMODE_PWM1;
   sConfig.OCPolarity   = TIM_OCPOLARITY_HIGH;
   sConfig.OCFastMode   = TIM_OCFAST_DISABLE;
@@ -362,7 +335,7 @@ void Img_Scanner_Configuration(void)
 	if (HAL_TIM_PWM_Start(&TimHandle, SCAN_CP_TIM_CHANNEL)!= HAL_OK) Error_Handler();
 
  /*
-  *  Debug output PA1, MT700 P15
+  *  Debug output pin
   */
 	DEBUG_OUT_CLK_ENABLE();
   GPIO_InitStruct.Pin = DEBUG_OUT_PIN;
@@ -373,6 +346,9 @@ void Img_Scanner_Configuration(void)
   HAL_GPIO_WritePin(DEBUG_OUT_PORT, DEBUG_OUT_PIN, GPIO_PIN_RESET); 
 
 
+  /*
+  *  Analog image sensor signal, MT710T CP/pin 7
+  */
   AdcHandle.Instance = SCAN_VOUT_ADC;	
   AdcHandle.Init.ClockPrescaler        = ADC_CLOCK_SYNC_PCLK_DIV4;
   AdcHandle.Init.LowPowerAutoWait      = DISABLE;
@@ -408,10 +384,6 @@ void Mic_Configuration() {
   /* Timer Output Compare Configuration Structure declaration */
   TIM_OC_InitTypeDef sConfig;
 	GPIO_InitTypeDef GPIO_InitStruct;
-
-	/* Configure PA14 to turn on SCAN_EN for the microphone */
-  /* Enable the GPIO_A clock */
-  // Done in setScannerPower()
 	
 	/* Configure PA6 to turn on SCAN_ON_LED_EN for the scanner */
   /* Enable the GPIO_A clock */
@@ -479,9 +451,7 @@ if(HAL_SPI_Receive_DMA(&SpiHandle, (uint8_t *)InternalBuffer, 2*INTERNAL_BUFF_SI
   */
 int main(void)
 {	
-#ifdef SCAN_DEBUG
-  uint32_t scan_count = 0;
-#endif
+  uint32_t scan_count;
   zbar_decoder_t *decoder;
   zbar_scanner_t *scanner;
   zbar_symbol_type_t edge;
@@ -502,9 +472,7 @@ int main(void)
 	
     Img_Scanner_Configuration();
 		setScannerLED(1);
-		setScannerPower(1);
 	  Mic_Configuration();
-		// HACK HACK HACK
 		// UART needs to be configured last in order for DMA remapping to work
 	  UART_Config();
 		
@@ -526,6 +494,7 @@ int main(void)
 	
 	  scan_decoded = 0;
 		audio_pkt_count = 0;
+		scan_count = 0;
 
     while(1) {
 			if (scan_decoded) {
@@ -533,20 +502,20 @@ int main(void)
 				while ((uart_state == HAL_UART_STATE_BUSY) || (uart_state == HAL_UART_STATE_BUSY_TX) || (uart_state == HAL_UART_STATE_BUSY_TX_RX));
 				if(HAL_UART_Transmit_DMA(&UartHandle, ScanPacketBuf, PACKET_HDR_LEN + ScanPacketBuf[PACKET_LEN_FIELD])!= HAL_OK) Error_Handler();
 				setScannerLED(0);
-				setScannerPower(0);
 			}
 				
 			// wait for DMA transfer to finish
 			while (cmos_sensor_state != CMOS_SENSOR_STOP); 
 			// switch between ping-pong buffers
-			img_buf_wr_ptr ^= 1;							
+			img_buf_wr_ptr ^= 1;				
+      // alternate high gain and low gain scans
+			setScannerGAIN(scan_count%2 == 0);
     	cmos_sensor_state = CMOS_SENSOR_READY;
 #ifdef SCAN_DEBUG
 			if (scan_count && (scan_count % 4 == 0))
 		    if(HAL_UART_Transmit_DMA(&UartHandle, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
-      scan_count++;
 #endif
-			//toggleDebug();
+      scan_count++;
 				
     	i=0;
     	do {
@@ -555,6 +524,11 @@ int main(void)
     	} while ((edge <= ZBAR_PARTIAL) && (i<IMAGE_COLUMNS));
 
 			zbar_scanner_new_scan(scanner);
+			
+			// HACK HACK HACK
+			// should not require two consecutive successful scans,
+			// could do a best of five (at least 3 out of the last five scans)
+			// to reduce error 
 			
     	// reset sym_count if no symbol was found to avoid wrong results
     	// from noise
@@ -655,7 +629,6 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) // HAL_SPI_TxRxCpltCallback
 					if(HAL_UART_Transmit_DMA(&UartHandle, &AudioPacketBuf[PACKET_HDR_LEN], AUDIO_PAYLOAD_LEN)!= HAL_OK) Error_Handler();
 				}
 		}
-	//toggleDebug();
 	//HAL_GPIO_WritePin(DEBUG_OUT_PORT, DEBUG_OUT_PIN, GPIO_PIN_RESET);
 }
 
@@ -677,10 +650,7 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) // HAL_SPI_TxRxCpltCallback
   */
 void Error_Handler(void)
 {
-  while (1)
-  {
-		//toggleDebug();
-  }
+  while (1);
 }
 
 #ifdef  USE_FULL_ASSERT
