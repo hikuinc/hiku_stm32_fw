@@ -140,7 +140,7 @@
 #define AUDIO_PAYLOAD_LEN                     ((AUDIO_SAMP_PER_PACKET * PCM_OUT_SIZE * DEFAULT_AUDIO_IN_CHANNEL_NBR)/2)
 #define SCAN_PAYLOAD_LEN                      31
 
-#define AUDIO_DISCARD_SAMP                    48
+#define AUDIO_DISCARD_SAMP                    24
 
 #define PKT_TYPE_AUDIO                        0x10
 #define PKT_TYPE_SCAN                         0x20
