@@ -73,9 +73,9 @@ uint32_t img_buf_wr_ptr;
 
 //static volatile uint8_t scan_triggered;
 static uint8_t scan_decoded;
-unsigned char decode_buffer[BUFFER_MAX];
-unsigned char ean_symbol[128];
-int sym_count = 0;
+unsigned char decode_buffer[DECODE_BUFFER_SIZE][DECODE_BUFFERS];
+uint8_t decode_count;
+uint8_t scan_wr_ptr;
 uint8_t audio_pkt_count;
 uint8_t discard_samp;
 
@@ -95,7 +95,7 @@ void UART_Config(void) {
       - Hardware flow control disabled (RTS and CTS signals) */
   UartHandle.Instance        = USARTx;
 
-  UartHandle.Init.BaudRate   = 1843200; // 115200; //1843200; 
+  UartHandle.Init.BaudRate   = UART_BAUD_RATE;
   UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
   UartHandle.Init.StopBits   = UART_STOPBITS_1;
   UartHandle.Init.Parity     = UART_PARITY_NONE;
@@ -174,42 +174,45 @@ int8_t ALaw_Encode(int16_t number)
 
 static void symbol_handler (zbar_decoder_t *dcode)
 {
-    int i;
-    int sym_equal = 1;
+    uint32_t i, j;
+	  uint32_t decodes_equal;
     zbar_symbol_type_t type = zbar_decoder_get_type(dcode);
-    /* FIXME assert(type == ZBAR_PARTIAL) */
-    /* FIXME debug flag to save/display all PARTIALs */
-    if(type <= ZBAR_PARTIAL)
-        return;
+
+	  if(type <= ZBAR_PARTIAL)
+      return;
 		
     const char *data = zbar_decoder_get_data(dcode);
     unsigned datalen = zbar_decoder_get_data_length(dcode);
+		
+		if (datalen > DECODE_BUFFER_SIZE)
+			return;
 
-    for (i=0; i<datalen; i++) {
-      if (data[i] != ean_symbol[i])
-    	  sym_equal = 0;
-      ean_symbol[i] = data[i];
-			ScanPacketBuf[PACKET_HDR_LEN + i] = data[i];
-    }
-    ean_symbol[i] = '\r';
-    ean_symbol[i+1] = '\n';
-    ean_symbol[i+2] = 0;
-
-    // require consecutive recognitions of the same code
-    // to avoid incorrect results from noise
-    if (sym_equal) {
-    	sym_count++;
-        if (sym_count % 2 == 0) {
+		if (decode_count >= DECODE_BUFFERS/2) {
+			decodes_equal = 0;
+			for (i=0; i<decode_count; i++) {
+				for (j=0; j<datalen; j++) 
+			     if (data[j] != decode_buffer[j][i])
+							break;
+				if (j == datalen)
+					decodes_equal++;
+				if (decodes_equal == DECODE_BUFFERS/2) {
 		      ScanPacketBuf[PACKET_LEN_FIELD] = datalen+3;
-		      ScanPacketBuf[PACKET_HDR_LEN + i] = '\r';
-		      ScanPacketBuf[PACKET_HDR_LEN + i+1] = '\n';
-		      ScanPacketBuf[PACKET_HDR_LEN + i+2] = 0;
+					for (j=0; j<datalen; j++)
+					  ScanPacketBuf[PACKET_HDR_LEN + j] = data[j];
+		      ScanPacketBuf[PACKET_HDR_LEN + j] = '\r';
+		      ScanPacketBuf[PACKET_HDR_LEN + j+1] = '\n';
+		      ScanPacketBuf[PACKET_HDR_LEN + j+2] = 0;
 					scan_decoded = 1;
 					//scan result is sent in the main loop
-				}					
-    }
-    else
-    	sym_count = 0;
+					return;
+				}
+		  }
+		}
+
+    for (i=0; i<datalen; i++) 
+      decode_buffer[i][scan_wr_ptr] = data[i];
+		scan_wr_ptr = (scan_wr_ptr+1) % DECODE_BUFFERS;
+		decode_count = (decode_count >= DECODE_BUFFERS) ? DECODE_BUFFERS : (decode_count + 1);
 }
 
 /* turn on scanner LED on/off */
@@ -451,7 +454,7 @@ if(HAL_SPI_Receive_DMA(&SpiHandle, (uint8_t *)InternalBuffer, 2*INTERNAL_BUFF_SI
   */
 int main(void)
 {	
-  uint32_t scan_count;
+  uint32_t scans;
   zbar_decoder_t *decoder;
   zbar_scanner_t *scanner;
   zbar_symbol_type_t edge;
@@ -494,7 +497,9 @@ int main(void)
 	
 	  scan_decoded = 0;
 		audio_pkt_count = 0;
-		scan_count = 0;
+		decode_count = 0;
+		scan_wr_ptr = 0;
+		scans = 0;
 
     while(1) {
 			if (scan_decoded) {
@@ -509,13 +514,13 @@ int main(void)
 			// switch between ping-pong buffers
 			img_buf_wr_ptr ^= 1;				
       // alternate high gain and low gain scans
-			setScannerGAIN(scan_count%2 == 0);
+			setScannerGAIN(scans%2 == 0);
     	cmos_sensor_state = CMOS_SENSOR_READY;
 #ifdef SCAN_DEBUG
-			if (scan_count && (scan_count % 4 == 0))
+			if (scans && (scans % 4 == 0))
 		    if(HAL_UART_Transmit_DMA(&UartHandle, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
 #endif
-      scan_count++;
+      scans++;
 				
     	i=0;
     	do {
@@ -523,17 +528,7 @@ int main(void)
     		i++;
     	} while ((edge <= ZBAR_PARTIAL) && (i<IMAGE_COLUMNS));
 
-			zbar_scanner_new_scan(scanner);
-			
-			// HACK HACK HACK
-			// should not require two consecutive successful scans,
-			// could do a best of five (at least 3 out of the last five scans)
-			// to reduce error 
-			
-    	// reset sym_count if no symbol was found to avoid wrong results
-    	// from noise
-    	if (edge <= ZBAR_PARTIAL)
-    		sym_count = 0;
+			zbar_scanner_new_scan(scanner);			
     }
 }
 

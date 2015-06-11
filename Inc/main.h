@@ -144,6 +144,8 @@
 
 #define PKT_TYPE_AUDIO                        0x10
 #define PKT_TYPE_SCAN                         0x20
+
+#define UART_BAUD_RATE                        1843200
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 void Error_Handler(void);

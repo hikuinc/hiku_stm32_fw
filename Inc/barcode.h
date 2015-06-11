@@ -3,9 +3,6 @@
 
 #include "stm32f0xx_hal.h"
 
-/* define USE_LINEAR_SENSOR to use linear sensor instead of camera */
-#define USE_LINEAR_SENSOR
-
 /* barcode image dimensions in pixels */
 /* number of rows in the image to capture with a single scan*/
 #define IMAGE_COLUMNS 1016
@@ -22,11 +19,11 @@ extern volatile uint32_t cmos_sensor_state;
 extern uint8_t img_buf[IMAGE_COLUMNS][2];
 extern uint32_t img_buf_wr_ptr;
 
-// scans to execute at high and low signal gains
-//#define SCANS_HIGH_GAIN 2
-//#define SCANS_LOW_GAIN 1
-
-/* number of timing samples to use for computation of scans/s */
-//#define SCAN_TIMING_SAMPLES 8
+// number of decoded scans to keep in a FIFO for a "best of"
+// best of 5: 3 identical scans out of 5 decoded scans
+// needed to signal a recognized barcode
+#define DECODE_BUFFERS 4
+// decode buffer size in bytes
+#define DECODE_BUFFER_SIZE 64
 
 #endif
