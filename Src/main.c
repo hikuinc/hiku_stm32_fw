@@ -507,6 +507,7 @@ int main(void)
 				while ((uart_state == HAL_UART_STATE_BUSY) || (uart_state == HAL_UART_STATE_BUSY_TX) || (uart_state == HAL_UART_STATE_BUSY_TX_RX));
 				if(HAL_UART_Transmit_DMA(&UartHandle, ScanPacketBuf, PACKET_HDR_LEN + ScanPacketBuf[PACKET_LEN_FIELD])!= HAL_OK) Error_Handler();
 				setScannerLED(0);
+				while(1);
 			}
 				
 			// wait for DMA transfer to finish
