@@ -1,7 +1,7 @@
 Dim StdIn, StdOut
 Set StdIn = WScript.StdIn
 Set StdOut = WScript.StdOut
-StdOut.Write "const stm32_fw = """
+StdOut.Write "const STM32_SW = """
 If WScript.Arguments.Count = 0 Then
 Do While Not StdIn.AtEndOfStream
 StdOut.Write "\x"

@@ -229,6 +229,23 @@ void toggleDebug() {
 	HAL_GPIO_TogglePin(DEBUG_OUT_PORT, DEBUG_OUT_PIN);
 }
 
+// send the software version to the Imp via UART
+void sendSWVersion(){
+	  uint8_t pkt_buf[8];
+	
+		pkt_buf[0] = (PACKET_HDR >> 24) & 0xFF;
+		pkt_buf[1] = (PACKET_HDR >> 16) & 0xFF;
+		pkt_buf[2] = (PACKET_HDR >> 8) & 0xFF;
+		pkt_buf[3] = PACKET_HDR & 0xFF;
+		pkt_buf[4] = PKT_TYPE_SW_VERSION;
+		pkt_buf[5] = 0x02;
+		pkt_buf[6] = SOFTWARE_VERSION;
+		pkt_buf[7] = SOFTWARE_REVISION;
+	
+	  // use a blocking transmit with a 20ms timeout to transmit the software version
+	  if(HAL_UART_Transmit(&UartHandle, pkt_buf, PACKET_HDR_LEN + pkt_buf[PACKET_LEN_FIELD], 20)!= HAL_OK) Error_Handler();
+}
+
 void Img_Scanner_Configuration(void)
 { 												
   GPIO_InitTypeDef GPIO_InitStruct;
@@ -446,6 +463,102 @@ if(HAL_SPI_Receive_DMA(&SpiHandle, (uint8_t *)InternalBuffer, 2*INTERNAL_BUFF_SI
 
 }
 
+//
+// HACK HACK HACK
+//
+// temporary workaround to configure LP3923 before Imp is connected to WiFi
+// avoids LP3923 shutdown
+
+void writeI2CBit (uint8_t i2c_bit) {
+	int j;
+	int jdelay = 10;
+	int ddelay = 1;
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, i2c_bit);
+  for(j=0;j<ddelay;j++);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET); 
+	for(j=0;j<jdelay;j++);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET); 
+	for(j=0;j<(jdelay-ddelay);j++);
+}
+
+void startLP3923() {
+	GPIO_InitTypeDef GPIO_InitStruct;
+	int i, j;
+	int jdelay = 10;
+	int ddelay = 1;
+	
+	__GPIOA_CLK_ENABLE();
+	__GPIOB_CLK_ENABLE();
+	
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET); 
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+	/* PA0 SCL */
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+	
+	/* PB3 SDA */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+	
+  // start condition
+  for(j=0; j<jdelay; j++);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
+  for(j=0;j<jdelay;j++);
+  
+	// I2C Address 0x7E
+  writeI2CBit(1);
+  writeI2CBit(1);
+  writeI2CBit(1);
+  writeI2CBit(1);
+  writeI2CBit(1);
+  writeI2CBit(1);
+  writeI2CBit(0);
+	// Write command
+  writeI2CBit(0);
+	// Ack
+  writeI2CBit(1);
+
+	// Register 0x00
+	for (i=0; i<8;i++)
+    writeI2CBit(0);
+	// Ack
+  writeI2CBit(1);
+
+	// Data 0x06
+  writeI2CBit(0);
+  writeI2CBit(0);
+  writeI2CBit(0);
+  writeI2CBit(0);
+  writeI2CBit(0);
+  writeI2CBit(1);
+  writeI2CBit(1);
+  writeI2CBit(0);
+	// Ack
+  writeI2CBit(1);
+
+	for(j=0;j<jdelay;j++);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
+	
+  GPIO_InitStruct.Pin = GPIO_PIN_13;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+}
 
 /**
   * @brief  Main program
@@ -460,11 +573,12 @@ int main(void)
   zbar_symbol_type_t edge;
 
 	uint32_t i;
-	GPIO_InitTypeDef  GPIO_InitStruct;
   TIM_HandleTypeDef    TimHandle;
-	
+		
   /* STM32F0xx HAL library initialization */
   HAL_Init();
+
+  startLP3923();
 	
   /* Configure the system clock to have a system clock = 48 Mhz */
   SystemClock_Config();
@@ -475,16 +589,18 @@ int main(void)
 	
     Img_Scanner_Configuration();
 		setScannerLED(1);
-	  Mic_Configuration();
+
+    Mic_Configuration();
 		// UART needs to be configured last in order for DMA remapping to work
 	  UART_Config();
+
+
+		sendSWVersion();
 		
-	  //SendString(" HIKU SCAN V0.1\r\n");
-		
-		AudioPacketBuf[0] = ScanPacketBuf[0] = 0xDE;
-		AudioPacketBuf[1] = ScanPacketBuf[1] = 0xAD;
-		AudioPacketBuf[2] = ScanPacketBuf[2] = 0xBE;
-		AudioPacketBuf[3] = ScanPacketBuf[3] = 0xEF;
+		AudioPacketBuf[0] = ScanPacketBuf[0] = (PACKET_HDR >> 24) & 0xFF;
+		AudioPacketBuf[1] = ScanPacketBuf[1] = (PACKET_HDR >> 16) & 0xFF;
+		AudioPacketBuf[2] = ScanPacketBuf[2] = (PACKET_HDR >> 8) & 0xFF;
+		AudioPacketBuf[3] = ScanPacketBuf[3] = PACKET_HDR & 0xFF;
 		AudioPacketBuf[PACKET_TYPE_FIELD] = PKT_TYPE_AUDIO;
 		ScanPacketBuf[PACKET_TYPE_FIELD] = PKT_TYPE_SCAN;
 		AudioPacketBuf[PACKET_LEN_FIELD] = AUDIO_PAYLOAD_LEN;
