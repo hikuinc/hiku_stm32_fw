@@ -146,11 +146,11 @@
 #define PKT_TYPE_AUDIO                        0x10
 #define PKT_TYPE_SCAN                         0x20
 
-#define UART_BAUD_RATE                        1843200
+#define UART_BAUD_RATE                        921600
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 0
+#define SOFTWARE_REVISION                     (uint8_t) 7
 
 
 /* Exported macro ------------------------------------------------------------*/

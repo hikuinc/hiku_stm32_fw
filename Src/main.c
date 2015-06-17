@@ -485,8 +485,7 @@ void startLP3923() {
 	GPIO_InitTypeDef GPIO_InitStruct;
 	int i, j;
 	int jdelay = 10;
-	int ddelay = 1;
-	
+
 	__GPIOA_CLK_ENABLE();
 	__GPIOB_CLK_ENABLE();
 	
