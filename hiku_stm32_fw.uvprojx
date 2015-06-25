@@ -79,7 +79,7 @@
           </BeforeMake>
           <AfterMake>
             <RunUserProg1>0</RunUserProg1>
-            <RunUserProg2>0</RunUserProg2>
+            <RunUserProg2>1</RunUserProg2>
             <UserProg1Name></UserProg1Name>
             <UserProg2Name>C:\Users\user\Documents\Hiku\hiku_stm32_fw\hiku_stm32_fw.bat</UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
@@ -347,7 +347,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>1</Optim>
+            <Optim>0</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -528,6 +528,11 @@
               <FileType>1</FileType>
               <FilePath>..\STM32Cube_FW_F0_V1.2.0\Drivers\STM32F0xx_HAL_Driver\Src\stm32f0xx_hal_adc_ex.c</FilePath>
             </File>
+            <File>
+              <FileName>stm32f0xx_hal_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\STM32Cube_FW_F0_V1.2.0\Drivers\STM32F0xx_HAL_Driver\Src\stm32f0xx_hal_i2c.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -622,6 +627,16 @@
               <FileName>code128.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Src\decoder\code128.c</FilePath>
+            </File>
+            <File>
+              <FileName>code39.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Src\decoder\code39.c</FilePath>
+            </File>
+            <File>
+              <FileName>ean.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Src\decoder\ean.c</FilePath>
             </File>
           </Files>
         </Group>

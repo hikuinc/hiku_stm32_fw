@@ -213,6 +213,9 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart)
   
   /* Associate the initialized DMA handle to the UART handle */
   __HAL_LINKDMA(huart, hdmatx, hdma_tx);
+
+	// Proper way to do UART DMA TX remap to channel 4?
+	__HAL_REMAPDMA_CHANNEL_ENABLE(HAL_REMAPDMA_USART1_TX_DMA_CH4);
     
   /* Configure the DMA handler for reception process */
   hdma_rx.Instance                 = USARTx_RX_DMA_STREAM;
@@ -230,13 +233,18 @@ void HAL_UART_MspInit(UART_HandleTypeDef *huart)
   /* Associate the initialized DMA handle to the the UART handle */
   __HAL_LINKDMA(huart, hdmarx, hdma_rx);
     
-  /*##-4- Configure the NVIC for DMA #########################################*/
+	// Proper way to do UART DMA TX remap to channel 5?
+	__HAL_REMAPDMA_CHANNEL_ENABLE(HAL_REMAPDMA_USART1_RX_DMA_CH5);
+
+/*##-4- Configure the NVIC for DMA #########################################*/
+	// Set interrupt priority for UART to the lowest to not
+	// impact microphone interrupt routine
   /* NVIC configuration for DMA transfer complete interrupt (USARTx_TX) */
-  HAL_NVIC_SetPriority(USARTx_DMA_TX_IRQn, 0, 1);
+  HAL_NVIC_SetPriority(USARTx_DMA_TX_IRQn, 3, 1);
   HAL_NVIC_EnableIRQ(USARTx_DMA_TX_IRQn);
     
   /* NVIC configuration for DMA transfer complete interrupt (USARTx_RX) */
-  HAL_NVIC_SetPriority(USARTx_DMA_RX_IRQn, 0, 0);   
+  HAL_NVIC_SetPriority(USARTx_DMA_RX_IRQn, 3, 0);   
   HAL_NVIC_EnableIRQ(USARTx_DMA_RX_IRQn);
 }
 

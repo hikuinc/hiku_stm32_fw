@@ -104,15 +104,6 @@ void UART_Config(void) {
   UartHandle.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if(HAL_UART_DeInit(&UartHandle) != HAL_OK) Error_Handler();
   if(HAL_UART_Init(&UartHandle) != HAL_OK) Error_Handler();
-	// Proper way to do UART DMA remap to channels 4 and 5?
-	__HAL_REMAPDMA_CHANNEL_ENABLE(HAL_REMAPDMA_USART1_TX_DMA_CH4);
-	__HAL_REMAPDMA_CHANNEL_ENABLE(HAL_REMAPDMA_USART1_RX_DMA_CH5);
-	
-	// Set interrupt priority for UART to the lowest to not
-	// impact microphone interrupt routine
-	HAL_NVIC_SetPriority(USARTx_DMA_TX_IRQn, 0x03, 0x00);
-	HAL_NVIC_SetPriority(USARTx_DMA_RX_IRQn, 0x03, 0x00);
-	
 }
 
 // Send string via UART
