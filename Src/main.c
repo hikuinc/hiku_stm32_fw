@@ -609,8 +609,10 @@ int main(void)
 
     while(1) {
 			if (scan_decoded) {
-				uint32_t uart_state = HAL_UART_GetState(&UartHandle);
-				while ((uart_state == HAL_UART_STATE_BUSY) || (uart_state == HAL_UART_STATE_BUSY_TX) || (uart_state == HAL_UART_STATE_BUSY_TX_RX));
+				uint32_t uart_state;
+				do {
+					uart_state = HAL_UART_GetState(&UartHandle);
+				} while ((uart_state == HAL_UART_STATE_BUSY) || (uart_state == HAL_UART_STATE_BUSY_TX) || (uart_state == HAL_UART_STATE_BUSY_TX_RX));
 				if(HAL_UART_Transmit_DMA(&UartHandle, ScanPacketBuf, PACKET_HDR_LEN + ScanPacketBuf[PACKET_LEN_FIELD])!= HAL_OK) Error_Handler();
 				setScannerLED(0);
 				while(1);
