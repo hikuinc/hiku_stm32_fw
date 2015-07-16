@@ -150,7 +150,7 @@
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 16
+#define SOFTWARE_REVISION                     (uint8_t) 17
 
 
 /* Exported macro ------------------------------------------------------------*/
