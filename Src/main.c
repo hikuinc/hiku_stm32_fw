@@ -25,7 +25,6 @@
 
 
 //#define SCAN_DEBUG
-//#define SCAN_DEBUG_SAMPLES 128
 
 /** @addtogroup STM32F0xx_HAL_Demonstrations
   * @{
@@ -95,7 +94,11 @@ void UART_Config(void) {
       - Hardware flow control disabled (RTS and CTS signals) */
   UartHandle.Instance        = USARTx;
 
+#ifdef SCAN_DEBUG
+  UartHandle.Init.BaudRate   = 1843200;
+#else
   UartHandle.Init.BaudRate   = UART_BAUD_RATE;
+#endif
   UartHandle.Init.WordLength = UART_WORDLENGTH_8B;
   UartHandle.Init.StopBits   = UART_STOPBITS_1;
   UartHandle.Init.Parity     = UART_PARITY_NONE;
@@ -454,102 +457,6 @@ if(HAL_SPI_Receive_DMA(&SpiHandle, (uint8_t *)InternalBuffer, 2*INTERNAL_BUFF_SI
 
 }
 
-//
-// HACK HACK HACK
-//
-// temporary workaround to configure LP3923 before Imp is connected to WiFi
-// avoids LP3923 shutdown
-
-void writeI2CBit (uint8_t i2c_bit) {
-	int j;
-	int jdelay = 10;
-	int ddelay = 1;
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, i2c_bit);
-  for(j=0;j<ddelay;j++);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET); 
-	for(j=0;j<jdelay;j++);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET); 
-	for(j=0;j<(jdelay-ddelay);j++);
-}
-
-void startLP3923() {
-	GPIO_InitTypeDef GPIO_InitStruct;
-	int i, j;
-	int jdelay = 10;
-
-	__GPIOA_CLK_ENABLE();
-	__GPIOB_CLK_ENABLE();
-	
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET); 
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
-	/* PA0 SCL */
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-	
-	/* PB3 SDA */
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-	
-  // start condition
-  for(j=0; j<jdelay; j++);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_RESET);
-  for(j=0;j<jdelay;j++);
-  
-	// I2C Address 0x7E
-  writeI2CBit(1);
-  writeI2CBit(1);
-  writeI2CBit(1);
-  writeI2CBit(1);
-  writeI2CBit(1);
-  writeI2CBit(1);
-  writeI2CBit(0);
-	// Write command
-  writeI2CBit(0);
-	// Ack
-  writeI2CBit(1);
-
-	// Register 0x00
-	for (i=0; i<8;i++)
-    writeI2CBit(0);
-	// Ack
-  writeI2CBit(1);
-
-	// Data 0x06
-  writeI2CBit(0);
-  writeI2CBit(0);
-  writeI2CBit(0);
-  writeI2CBit(0);
-  writeI2CBit(0);
-  writeI2CBit(1);
-  writeI2CBit(1);
-  writeI2CBit(0);
-	// Ack
-  writeI2CBit(1);
-
-	for(j=0;j<jdelay;j++);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_13, GPIO_PIN_SET);
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_SET);
-	
-  GPIO_InitStruct.Pin = GPIO_PIN_13;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  GPIO_InitStruct.Pin = GPIO_PIN_3;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-}
-
 /**
   * @brief  Main program
   * @param  None
@@ -561,14 +468,13 @@ int main(void)
   zbar_decoder_t *decoder;
   zbar_scanner_t *scanner;
   zbar_symbol_type_t edge;
+	//uint8_t cmdBuffer[1];
 
 	uint32_t i;
   TIM_HandleTypeDef    TimHandle;
 		
   /* STM32F0xx HAL library initialization */
   HAL_Init();
-
-  startLP3923();
 	
   /* Configure the system clock to have a system clock = 48 Mhz */
   SystemClock_Config();
@@ -580,13 +486,12 @@ int main(void)
     Img_Scanner_Configuration();
 		setScannerLED(1);
 
+#ifndef SCAN_DEBUG
     Mic_Configuration();
+#endif
 		// UART needs to be configured last in order for DMA remapping to work
 	  UART_Config();
 
-
-		sendSWVersion();
-		
 		AudioPacketBuf[0] = ScanPacketBuf[0] = (PACKET_HDR >> 24) & 0xFF;
 		AudioPacketBuf[1] = ScanPacketBuf[1] = (PACKET_HDR >> 16) & 0xFF;
 		AudioPacketBuf[2] = ScanPacketBuf[2] = (PACKET_HDR >> 8) & 0xFF;
@@ -595,28 +500,51 @@ int main(void)
 		ScanPacketBuf[PACKET_TYPE_FIELD] = PKT_TYPE_SCAN;
 		AudioPacketBuf[PACKET_LEN_FIELD] = AUDIO_PAYLOAD_LEN;
 
-    decoder = zbar_decoder_create();
-    scanner = zbar_scanner_create(decoder);
-    zbar_decoder_set_handler(decoder, symbol_handler);
-	
-	  zbar_scanner_new_scan(scanner);
-	
 	  scan_decoded = 0;
 		audio_pkt_count = 0;
 		decode_count = 0;
 		scan_wr_ptr = 0;
 		scans = 0;
 
+#ifndef SCAN_DEBUG
+		sendSWVersion();
+#endif
+/*
+		do {
+			HAL_StatusTypeDef uart_status = HAL_UART_Receive(&UartHandle, (uint8_t *)cmdBuffer, 1, 500);
+			if (uart_status == HAL_OK) {
+				switch (cmdBuffer[0]) {
+					case 'L': setScannerLED(1); while(1);
+					          break;
+					case 'S': break;
+					default: break;
+				}
+				if (cmdBuffer[0]=='S') break; 
+			}
+		} while (1);
+*/
+  		
+    decoder = zbar_decoder_create();
+    scanner = zbar_scanner_create(decoder);
+    zbar_decoder_set_handler(decoder, symbol_handler);
+	
+	  zbar_scanner_new_scan(scanner);
+	
     while(1) {
+#ifndef SCAN_DEBUG
 			if (scan_decoded) {
 				uint32_t uart_state;
-				do {
-					uart_state = HAL_UART_GetState(&UartHandle);
-				} while ((uart_state == HAL_UART_STATE_BUSY) || (uart_state == HAL_UART_STATE_BUSY_TX) || (uart_state == HAL_UART_STATE_BUSY_TX_RX));
-				if(HAL_UART_Transmit_DMA(&UartHandle, ScanPacketBuf, PACKET_HDR_LEN + ScanPacketBuf[PACKET_LEN_FIELD])!= HAL_OK) Error_Handler();
+				uint32_t scan_repeat;
+				for (scan_repeat=0;scan_repeat<SCAN_REPEAT_RESULT; scan_repeat++) {
+					do {
+						uart_state = HAL_UART_GetState(&UartHandle);
+					} while ((uart_state == HAL_UART_STATE_BUSY) || (uart_state == HAL_UART_STATE_BUSY_TX) || (uart_state == HAL_UART_STATE_BUSY_TX_RX));
+					if(HAL_UART_Transmit_DMA(&UartHandle, ScanPacketBuf, PACKET_HDR_LEN + ScanPacketBuf[PACKET_LEN_FIELD])!= HAL_OK) Error_Handler();
+				}
 				setScannerLED(0);
 				while(1);
 			}
+#endif
 				
 			// wait for DMA transfer to finish
 			while (cmos_sensor_state != CMOS_SENSOR_STOP); 
@@ -631,6 +559,7 @@ int main(void)
 #endif
       scans++;
 				
+#ifndef SCAN_DEBUG
     	i=0;
     	do {
     		edge = zbar_scan_y(scanner, img_buf[i][img_buf_wr_ptr^1]);
@@ -638,6 +567,7 @@ int main(void)
     	} while ((edge <= ZBAR_PARTIAL) && (i<IMAGE_COLUMNS));
 
 			zbar_scanner_new_scan(scanner);			
+#endif
     }
 }
 

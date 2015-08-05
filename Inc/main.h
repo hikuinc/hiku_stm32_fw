@@ -142,6 +142,8 @@
 
 #define AUDIO_DISCARD_SAMP                    24
 
+#define SCAN_REPEAT_RESULT                    64
+
 #define PKT_TYPE_SW_VERSION                   0x01
 #define PKT_TYPE_AUDIO                        0x10
 #define PKT_TYPE_SCAN                         0x20
@@ -150,7 +152,7 @@
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 17
+#define SOFTWARE_REVISION                     (uint8_t) 18
 
 
 /* Exported macro ------------------------------------------------------------*/
