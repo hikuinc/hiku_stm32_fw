@@ -25,6 +25,7 @@
 
 
 //#define SCAN_DEBUG
+#define SCAN_MAX_LINES 128
 
 /** @addtogroup STM32F0xx_HAL_Demonstrations
   * @{
@@ -67,8 +68,11 @@ static uint16_t InternalBufferCopy[INTERNAL_BUFF_SIZE];
 /* Scanner buffers */
 // use double-buffering (ping-pong buffering) to have one buffer to process
 // for bar codes while the other is being filled from the AD converter
-uint8_t img_buf[IMAGE_COLUMNS][2];
+uint8_t img_buf[2][IMAGE_COLUMNS];
 uint32_t img_buf_wr_ptr;
+#ifdef SCAN_DEBUG
+uint8_t scan_debug_buf[IMAGE_COLUMNS];
+#endif
 
 //static volatile uint8_t scan_triggered;
 static uint8_t scan_decoded;
@@ -464,6 +468,11 @@ if(HAL_SPI_Receive_DMA(&SpiHandle, (uint8_t *)InternalBuffer, 2*INTERNAL_BUFF_SI
   */
 int main(void)
 {	
+#ifdef SCAN_DEBUG
+  uint32_t scan_lines = 0;
+	uint32_t j=0;
+#endif
+
   uint32_t scans;
   zbar_decoder_t *decoder;
   zbar_scanner_t *scanner;
@@ -554,20 +563,23 @@ int main(void)
 			setScannerGAIN(scans%2 == 0);
     	cmos_sensor_state = CMOS_SENSOR_READY;
 #ifdef SCAN_DEBUG
-			if (scans && (scans % 4 == 0))
-		    if(HAL_UART_Transmit_DMA(&UartHandle, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
+			if ((scan_lines < SCAN_MAX_LINES) && scans && (scans % 8 == 0)) {
+				for (j=0; j<IMAGE_COLUMNS; j++)
+				  scan_debug_buf[IMAGE_COLUMNS-j-1] = img_buf[img_buf_wr_ptr^1][j];
+		    if(HAL_UART_Transmit_DMA(&UartHandle, scan_debug_buf, IMAGE_COLUMNS) != HAL_OK) Error_Handler();
+				//if(HAL_UART_Transmit_DMA(&UartHandle, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
+				scan_lines++;
+			}
 #endif
       scans++;
 				
-#ifndef SCAN_DEBUG
     	i=0;
     	do {
-    		edge = zbar_scan_y(scanner, img_buf[i][img_buf_wr_ptr^1]);
+    		edge = zbar_scan_y(scanner, img_buf[img_buf_wr_ptr^1][i]);
     		i++;
     	} while ((edge <= ZBAR_PARTIAL) && (i<IMAGE_COLUMNS));
 
 			zbar_scanner_new_scan(scanner);			
-#endif
     }
 }
 

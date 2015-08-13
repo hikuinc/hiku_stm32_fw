@@ -16,7 +16,7 @@
 // main thread and interrupt routines
 extern volatile uint32_t cmos_sensor_state;
 
-extern uint8_t img_buf[IMAGE_COLUMNS][2];
+extern uint8_t img_buf[2][IMAGE_COLUMNS];
 extern uint32_t img_buf_wr_ptr;
 
 // number of decoded scans to keep in a FIFO for a "best of"

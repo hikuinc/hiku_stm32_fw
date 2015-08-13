@@ -9,5 +9,9 @@ rem curl https://agent.electricimp.com/1f0NdPTKcTN5/erase
 rem curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/1f0NdPTKcTN5/push
 rem curl https://agent.electricimp.com/9IBxSsVH2OIZ/erase
 rem curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/9IBxSsVH2OIZ/push
-curl https://agent.electricimp.com/gZlt1iwGP9Ql/erase
-curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/gZlt1iwGP9Ql/push
+rem curl https://agent.electricimp.com/gZlt1iwGP9Ql/erase
+rem curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/gZlt1iwGP9Ql/push
+curl https://agent.electricimp.com/v8-Wvccf-nK-/erase
+curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/v8-Wvccf-nK-/push
+curl https://agent.electricimp.com/H5BEUcwXugfz/erase
+curl --data-binary @hiku_stm32_fw.bin https://agent.electricimp.com/H5BEUcwXugfz/push
