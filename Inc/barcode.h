@@ -20,9 +20,9 @@ extern uint8_t img_buf[2][IMAGE_COLUMNS];
 extern uint32_t img_buf_wr_ptr;
 
 // number of decoded scans to keep in a FIFO for a "best of"
-// best of 3: 2 identical scans out of 3 decoded scans
+// best of 5: 3 identical scans out of 5 decoded scans
 // needed to signal a recognized barcode
-#define DECODE_BUFFERS 2
+#define DECODE_BUFFERS 4
 // decode buffer size in bytes
 #define DECODE_BUFFER_SIZE 64
 

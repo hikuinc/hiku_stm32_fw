@@ -47,13 +47,10 @@ struct zbar_scanner_s {
 #endif
 #define ZBAR_SCANNER_THRESH_FADE_SHIFT 3
 
-#ifndef ZBAR_SCANNER_EWMA_WEIGHT
-# define ZBAR_SCANNER_EWMA_WEIGHT .78
-#endif
-#ifndef EWMA_WEIGHT
+#define ZBAR_SCANNER_EWMA_WEIGHT 1.5
 #define EWMA_WEIGHT ((unsigned)((ZBAR_SCANNER_EWMA_WEIGHT              \
                                  * (1 << (ZBAR_FIXED + 1)) + 1) / 2))
-#endif
+//#endif
 
 static inline zbar_symbol_type_t process_edge_new (zbar_scanner_t *scn)
 {
@@ -93,11 +90,11 @@ static inline unsigned calc_thresh_new (zbar_scanner_t *scn, unsigned x)
 }
 
 zbar_symbol_type_t zbar_scan_y_new (zbar_scanner_t *scn,
-                                uint8_t *img_buf, uint32_t size, uint8_t scale, uint8_t min_val)
+                                uint8_t *img_buf, uint32_t size)
 {
 	  register int x;
     zbar_symbol_type_t edge = ZBAR_NONE;
-    register int y0_0 = (img_buf[0] - min_val) * scale; 
+    register int y0_0 = img_buf[0]; 
     register int y0_1 = y0_0;
     register int y0_2 = y0_0;
     register int y1_1 = 0;
@@ -152,7 +149,7 @@ zbar_symbol_type_t zbar_scan_y_new (zbar_scanner_t *scn,
     }
 		y0_2 = y0_1;
     y0_1 = y0_0;
-    y0_0 += ((int)(((img_buf[x+1] - min_val) * scale - y0_1) * EWMA_WEIGHT)) >> ZBAR_FIXED;
+    y0_0 += ((int)((img_buf[x+1] - y0_1) * EWMA_WEIGHT)) >> ZBAR_FIXED;
 	}
 		scn->x = x;
     return(edge);

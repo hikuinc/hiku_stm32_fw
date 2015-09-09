@@ -462,13 +462,12 @@ int main(void)
 {	
 #ifdef SCAN_DEBUG
   uint32_t scan_lines = 0;
-#endif
 	uint32_t j=0;
+#endif
 
   uint32_t scans;
   zbar_decoder_t *decoder;
   zbar_scanner_t *scanner;
-  zbar_symbol_type_t edge;
 	//uint8_t cmdBuffer[1];
 
 	uint32_t i;
@@ -558,35 +557,17 @@ int main(void)
     	cmos_sensor_state = CMOS_SENSOR_READY;
 #ifdef SCAN_DEBUG
 			if ((scan_lines < SCAN_MAX_LINES) && scans && ((scan_lines < 64) ? (scans % 4 == 0) : (scans % 4 == 3)) ) {
-				unsigned char min_val = 255, max_val=0, val, scale;
-				for (j=100; j<IMAGE_COLUMNS-150; j++) {
-					val = img_buf[img_buf_wr_ptr^1][j];
-					if (val > max_val)
-						max_val = val;
-					if (val < min_val)
-						min_val = val;
-				}
-				scale = 255/(max_val-min_val);
 				for (j=0; j<IMAGE_COLUMNS; j++)
-				  scan_debug_buf[IMAGE_COLUMNS-j-1] = scale * (img_buf[img_buf_wr_ptr^1][j]-min_val);
+				  scan_debug_buf[IMAGE_COLUMNS-j-1] = img_buf[img_buf_wr_ptr^1][j];
 		    if(HAL_UART_Transmit_DMA(&UartHandle, scan_debug_buf, IMAGE_COLUMNS) != HAL_OK) Error_Handler();
 				//if(HAL_UART_Transmit_DMA(&UartHandle, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
 				scan_lines++;
 			}
 #endif
       scans++;
-				
-			unsigned char min_val = 255, max_val=0, val, scale;
-			for (j=100; j<IMAGE_COLUMNS-150; j++) {
-				val = img_buf[img_buf_wr_ptr^1][j];
-				if (val > max_val)
-					max_val = val;
-				if (val < min_val)
-					min_val = val;
-			}
-			scale = 255/(max_val-min_val);
+							
       // Process the full image array, calling symbol_handler when a barcode is detected
-			zbar_scan_y_new(scanner, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS, scale, min_val);
+			zbar_scan_y_new(scanner, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS);
       // Process unfinished edges and start a new scan
 			zbar_scanner_new_scan(scanner);			
     }
