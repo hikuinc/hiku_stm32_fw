@@ -21,6 +21,7 @@
 #include "barcode.h"
 #include "pdm_filter.h"
 #include "scanner_hal.h"
+#include "scanner.h"
 #include "main.h"
 
 
@@ -403,15 +404,6 @@ void Mic_Configuration() {
   TIM_OC_InitTypeDef sConfig;
 	GPIO_InitTypeDef GPIO_InitStruct;
 	
-	/* Configure PA6 to turn on SCAN_ON_LED_EN for the scanner */
-  /* Enable the GPIO_A clock */
-  GPIO_InitStruct.Pin = GPIO_PIN_6;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_HIGH;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6, GPIO_PIN_SET); 
-
 	/*## Configure the TIM peripheral to output 1MHz microphone clock #######################################*/
   TimHandle.Instance = TIMx;
 	/* Compute the prescaler value to have TIM3 counter clock equal to 16000000 Hz */
@@ -470,8 +462,8 @@ int main(void)
 {	
 #ifdef SCAN_DEBUG
   uint32_t scan_lines = 0;
-	uint32_t j=0;
 #endif
+	uint32_t j=0;
 
   uint32_t scans;
   zbar_decoder_t *decoder;
@@ -520,12 +512,14 @@ int main(void)
 #endif
 /*
 		do {
-			HAL_StatusTypeDef uart_status = HAL_UART_Receive(&UartHandle, (uint8_t *)cmdBuffer, 1, 500);
+			cmdBuffer[0] = 0;
+			HAL_StatusTypeDef uart_status = HAL_UART_Receive(&UartHandle, (uint8_t *)cmdBuffer, 1, UART_RECEIVE_TIMEOUT);
 			if (uart_status == HAL_OK) {
+				setScannerLED(1);
 				switch (cmdBuffer[0]) {
 					case 'L': setScannerLED(1); while(1);
 					          break;
-					case 'S': break;
+					case 'S': setScannerLED(1); break;
 					default: break;
 				}
 				if (cmdBuffer[0]=='S') break; 
@@ -563,9 +557,18 @@ int main(void)
 			setScannerGAIN(scans%2 == 0);
     	cmos_sensor_state = CMOS_SENSOR_READY;
 #ifdef SCAN_DEBUG
-			if ((scan_lines < SCAN_MAX_LINES) && scans && (scans % 8 == 0)) {
+			if ((scan_lines < SCAN_MAX_LINES) && scans && ((scan_lines < 64) ? (scans % 4 == 0) : (scans % 4 == 3)) ) {
+				unsigned char min_val = 255, max_val=0, val, scale;
+				for (j=100; j<IMAGE_COLUMNS-150; j++) {
+					val = img_buf[img_buf_wr_ptr^1][j];
+					if (val > max_val)
+						max_val = val;
+					if (val < min_val)
+						min_val = val;
+				}
+				scale = 255/(max_val-min_val);
 				for (j=0; j<IMAGE_COLUMNS; j++)
-				  scan_debug_buf[IMAGE_COLUMNS-j-1] = img_buf[img_buf_wr_ptr^1][j];
+				  scan_debug_buf[IMAGE_COLUMNS-j-1] = scale * (img_buf[img_buf_wr_ptr^1][j]-min_val);
 		    if(HAL_UART_Transmit_DMA(&UartHandle, scan_debug_buf, IMAGE_COLUMNS) != HAL_OK) Error_Handler();
 				//if(HAL_UART_Transmit_DMA(&UartHandle, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
 				scan_lines++;
@@ -573,12 +576,18 @@ int main(void)
 #endif
       scans++;
 				
-    	i=0;
-    	do {
-    		edge = zbar_scan_y(scanner, img_buf[img_buf_wr_ptr^1][i]);
-    		i++;
-    	} while ((edge <= ZBAR_PARTIAL) && (i<IMAGE_COLUMNS));
-
+			unsigned char min_val = 255, max_val=0, val, scale;
+			for (j=100; j<IMAGE_COLUMNS-150; j++) {
+				val = img_buf[img_buf_wr_ptr^1][j];
+				if (val > max_val)
+					max_val = val;
+				if (val < min_val)
+					min_val = val;
+			}
+			scale = 255/(max_val-min_val);
+      // Process the full image array, calling symbol_handler when a barcode is detected
+			zbar_scan_y_new(scanner, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS, scale, min_val);
+      // Process unfinished edges and start a new scan
 			zbar_scanner_new_scan(scanner);			
     }
 }

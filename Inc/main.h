@@ -149,11 +149,11 @@
 #define PKT_TYPE_SCAN                         0x20
 
 #define UART_BAUD_RATE                        921600
+#define UART_RECEIVE_TIMEOUT                  500
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 19
-
+#define SOFTWARE_REVISION                     (uint8_t) 21
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
