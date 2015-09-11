@@ -195,8 +195,7 @@ static void symbol_handler (zbar_decoder_t *dcode)
 				if (j == datalen)
 					decodes_equal++;
 				if (decodes_equal == DECODE_BUFFERS/2) {
-		      ScanPacketBuf[PACKET_LEN_FIELD] = 0;
-		      ScanPacketBuf[PACKET_LEN_FIELD+1] = datalen+3;
+		      ScanPacketBuf[PACKET_LEN_FIELD] = datalen+3;
 					for (j=0; j<datalen; j++)
 					  ScanPacketBuf[PACKET_HDR_LEN + j] = data[j];
 		      ScanPacketBuf[PACKET_HDR_LEN + j] = '\r';
@@ -231,20 +230,19 @@ void toggleDebug() {
 
 // send the software version to the Imp via UART
 void sendSWVersion(){
-	  uint8_t pkt_buf[9];
+	  uint8_t pkt_buf[8];
 	
 		pkt_buf[0] = (PACKET_HDR >> 24) & 0xFF;
 		pkt_buf[1] = (PACKET_HDR >> 16) & 0xFF;
 		pkt_buf[2] = (PACKET_HDR >> 8) & 0xFF;
 		pkt_buf[3] = PACKET_HDR & 0xFF;
 		pkt_buf[4] = PKT_TYPE_SW_VERSION;
-		pkt_buf[5] = 0x00;
-		pkt_buf[6] = 0x02;
-		pkt_buf[7] = SOFTWARE_VERSION;
-		pkt_buf[8] = SOFTWARE_REVISION;
+		pkt_buf[5] = 0x02;
+		pkt_buf[6] = SOFTWARE_VERSION;
+		pkt_buf[7] = SOFTWARE_REVISION;
 	
 	  // use a blocking transmit with a 20ms timeout to transmit the software version
-	  if(HAL_UART_Transmit(&UartHandle, pkt_buf, PACKET_HDR_LEN + pkt_buf[PACKET_LEN_FIELD+1], 20)!= HAL_OK) Error_Handler();
+	  if(HAL_UART_Transmit(&UartHandle, pkt_buf, PACKET_HDR_LEN + pkt_buf[PACKET_LEN_FIELD], 20)!= HAL_OK) Error_Handler();
 }
 
 void Img_Scanner_Configuration(void)
@@ -500,8 +498,7 @@ int main(void)
 		AudioPacketBuf[3] = ScanPacketBuf[3] = PACKET_HDR & 0xFF;
 		AudioPacketBuf[PACKET_TYPE_FIELD] = PKT_TYPE_AUDIO;
 		ScanPacketBuf[PACKET_TYPE_FIELD] = PKT_TYPE_SCAN;
-		AudioPacketBuf[PACKET_LEN_FIELD] = (AUDIO_PAYLOAD_LEN >> 8) & 0xFF;
-		AudioPacketBuf[PACKET_LEN_FIELD+1] = AUDIO_PAYLOAD_LEN & 0xFF;
+		AudioPacketBuf[PACKET_LEN_FIELD] = AUDIO_PAYLOAD_LEN;
 
 	  scan_decoded = 0;
 		audio_pkt_count = 0;
@@ -544,7 +541,7 @@ int main(void)
 					do {
 						uart_state = HAL_UART_GetState(&UartHandle);
 					} while ((uart_state == HAL_UART_STATE_BUSY) || (uart_state == HAL_UART_STATE_BUSY_TX) || (uart_state == HAL_UART_STATE_BUSY_TX_RX));
-					if(HAL_UART_Transmit_DMA(&UartHandle, ScanPacketBuf, PACKET_HDR_LEN + ScanPacketBuf[PACKET_LEN_FIELD+1])!= HAL_OK) Error_Handler();
+					if(HAL_UART_Transmit_DMA(&UartHandle, ScanPacketBuf, PACKET_HDR_LEN + ScanPacketBuf[PACKET_LEN_FIELD])!= HAL_OK) Error_Handler();
 				}
 				setScannerLED(0);
 				while(1);

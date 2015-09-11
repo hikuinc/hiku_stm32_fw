@@ -132,11 +132,11 @@
 #define INTERNAL_BUFF_SIZE                    64*DEFAULT_AUDIO_IN_FREQ/16000*DEFAULT_AUDIO_IN_CHANNEL_NBR
 /* PCM buffer output size */
 #define PCM_OUT_SIZE                          DEFAULT_AUDIO_IN_FREQ/1000
-#define AUDIO_SAMP_PER_PACKET                 24
+#define AUDIO_SAMP_PER_PACKET                 125
 #define PACKET_HDR                            0xDEADBEEF
 #define PACKET_TYPE_FIELD                     4
 #define PACKET_LEN_FIELD                      5
-#define PACKET_HDR_LEN                        6
+#define PACKET_HDR_LEN                        7
 #define AUDIO_PAYLOAD_LEN                     ((AUDIO_SAMP_PER_PACKET * PCM_OUT_SIZE * DEFAULT_AUDIO_IN_CHANNEL_NBR)/2)
 #define SCAN_PAYLOAD_LEN                      31
 
@@ -153,7 +153,7 @@
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 22
+#define SOFTWARE_REVISION                     (uint8_t) 23
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
