@@ -1,38 +1,10 @@
 /**
   ******************************************************************************
-  * @file    Demonstrations/Inc/main.h 
-  * @author  MCD Application Team
-  * @version V1.2.0
-  * @date    05-Dec-2014
-  * @brief   Header for main.c module
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT(c) 2014 STMicroelectronics</center></h2>
-  *
-  * Redistribution and use in source and binary forms, with or without modification,
-  * are permitted provided that the following conditions are met:
-  *   1. Redistributions of source code must retain the above copyright notice,
-  *      this list of conditions and the following disclaimer.
-  *   2. Redistributions in binary form must reproduce the above copyright notice,
-  *      this list of conditions and the following disclaimer in the documentation
-  *      and/or other materials provided with the distribution.
-  *   3. Neither the name of STMicroelectronics nor the names of its contributors
-  *      may be used to endorse or promote products derived from this software
-  *      without specific prior written permission.
-  *
-  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-  * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-  * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-  * DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-  * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-  * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-  * SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-  * CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-  *
-  ******************************************************************************
+  * @file    Inc/main.h 
+  * @author  Nils Gura
+  * @version V1.0
+  * @date    21-Sep-2015
+  * @brief   Main header file for scanner/microphone software
   */ 
   
 /* Define to prevent recursive inclusion -------------------------------------*/
@@ -41,9 +13,21 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f0xx_hal.h"
-//#include "stm32f0308_discovery.h"
 
 /* Exported types ------------------------------------------------------------*/
+typedef enum {
+	SCAN_CMD_MIC,
+	SCAN_CMD_MIC_SCAN,
+	SCAN_CMD_SCAN,
+	SCAN_CMD_LIGHT_ONLY,
+	SCAN_CMD_SCAN_DEBUG,
+  SCAN_CMD_NONE} scan_enum_t;
+
+typedef struct scan_command {
+	char cmdChar;
+	scan_enum_t scanCmd;
+} scan_cmd_t;
+	
 /* Exported constants --------------------------------------------------------*/
 /* User can use this section to tailor TIMx instance used and associated
    resources */
@@ -57,8 +41,6 @@
 #define TIMx_GPIO_PIN_CHANNEL3         GPIO_PIN_1
 #define TIMx_GPIO_AF_CHANNEL3          GPIO_AF1_TIM3
 
-/* User can use this section to tailor USARTx/UARTx instance used and associated 
-   resources */
 /* Definition for USARTx clock resources */
 #define USARTx                           USART1
 #define USARTx_CLK_ENABLE()              __USART1_CLK_ENABLE()
@@ -87,8 +69,6 @@
 #define USARTx_DMA_TX_IRQHandler          DMA1_Channel4_5_IRQHandler
 #define USARTx_DMA_RX_IRQHandler          DMA1_Channel4_5_IRQHandler
 
-/* User can use this section to tailor SPIx instance used and associated
-   resources */
 /* Definition for SPIx clock resources */
 #define SPIx                             SPI1
 #define SPIx_CLK_ENABLE()                __SPI1_CLK_ENABLE()
@@ -147,13 +127,18 @@
 #define PKT_TYPE_SW_VERSION                   0x01
 #define PKT_TYPE_AUDIO                        0x10
 #define PKT_TYPE_SCAN                         0x20
+#define PKT_TYPE_SCAN_DEBUG                   0xDB
 
 #define UART_BAUD_RATE                        921600
 #define UART_RECEIVE_TIMEOUT                  500
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 23
+#define SOFTWARE_REVISION                     (uint8_t) 24
+
+// scanner debug settings
+#define DEBUG_SCAN_LINES                      128
+#define UART_BAUD_RATE_DEBUG                  1843200
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */

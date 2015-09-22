@@ -4,7 +4,6 @@
 
 #include "zbar.h"
 #include "scanner.h"
-#include "div_mem.h"
 
 /* scanner state */
 struct zbar_scanner_s {
