@@ -369,7 +369,7 @@ void Img_Scanner_Configuration(void)
   /* ### - 3 - Channel configuration ######################################## */
   adc_sConfig.Channel      = SCAN_VOUT_ADC_CHANNEL;
   adc_sConfig.Rank         = ADC_RANK_CHANNEL_NUMBER;
-  adc_sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES_5;
+  adc_sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5; //ADC_SAMPLETIME_28CYCLES_5;
   if (HAL_ADC_ConfigChannel(&AdcHandle, &adc_sConfig) != HAL_OK) Error_Handler();
 
 	if (HAL_TIM_PWM_Start_IT(&TimHandleSp, SCAN_SP_TIM_CHANNEL)!= HAL_OK) Error_Handler();

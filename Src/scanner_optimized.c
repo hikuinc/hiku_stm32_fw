@@ -46,7 +46,7 @@ struct zbar_scanner_s {
 #endif
 #define ZBAR_SCANNER_THRESH_FADE_SHIFT 3
 
-#define ZBAR_SCANNER_EWMA_WEIGHT 1.5
+#define ZBAR_SCANNER_EWMA_WEIGHT 0.8
 #define EWMA_WEIGHT ((unsigned)((ZBAR_SCANNER_EWMA_WEIGHT              \
                                  * (1 << (ZBAR_FIXED + 1)) + 1) / 2))
 //#endif
