@@ -429,6 +429,21 @@ if(HAL_SPI_Receive_DMA(&SpiHandle, (uint8_t *)InternalBuffer, 2*INTERNAL_BUFF_SI
 
 }
 
+GPIO_PinState is_command_mode() {
+	GPIO_InitTypeDef GPIO_InitStruct;
+
+	USARTx_RX_GPIO_CLK_ENABLE();
+
+  GPIO_InitStruct.Pin       = USARTx_RX_PIN;
+  GPIO_InitStruct.Mode      = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull      = GPIO_NOPULL;
+  GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
+  
+  HAL_GPIO_Init(USARTx_RX_GPIO_PORT, &GPIO_InitStruct);
+
+	return HAL_GPIO_ReadPin(USARTx_RX_GPIO_PORT, USARTx_RX_PIN);
+}
+
 /**
   * @brief  Main program
   * @param  None
@@ -444,6 +459,7 @@ int main(void)
   uint32_t scan_lines = 0;
   uint32_t scans = 0;
 	uint32_t i;
+	GPIO_PinState cmd_mode;
 		
   /* STM32F0xx HAL library initialization */
   HAL_Init();
@@ -453,6 +469,8 @@ int main(void)
 		
 	Img_Scanner_Configuration();
 
+	cmd_mode = is_command_mode();
+	
 	UART_Config(SCAN_CMD_NONE);
 
 	AudioPacketBuf[0] = ScanPacketBuf[0] = (PACKET_HDR >> 24) & 0xFF;
@@ -467,7 +485,10 @@ int main(void)
 	scan_decoded = 0;
 
 	sendSWVersion();
-
+	
+	if (cmd_mode == GPIO_PIN_RESET)
+	  scanCmd = SCAN_CMD_MIC_SCAN;
+	
 	cmdBuffer[0] = 0;
 	while (scanCmd == SCAN_CMD_NONE) {
 				uint32_t uart_state;

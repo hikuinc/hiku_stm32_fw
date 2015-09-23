@@ -134,7 +134,7 @@ typedef struct scan_command {
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 25
+#define SOFTWARE_REVISION                     (uint8_t) 26
 
 // scanner debug settings
 #define DEBUG_SCAN_LINES                      128
