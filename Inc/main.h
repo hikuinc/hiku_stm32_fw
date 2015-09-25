@@ -18,9 +18,11 @@
 typedef enum {
 	SCAN_CMD_MIC,
 	SCAN_CMD_MIC_SCAN,
+	SCAN_CMD_MIC_SCAN_INSTANT,
 	SCAN_CMD_SCAN,
 	SCAN_CMD_LIGHT_ONLY,
 	SCAN_CMD_SCAN_DEBUG,
+	SCAN_CMD_FLASH_ERASE,
   SCAN_CMD_NONE} scan_enum_t;
 
 typedef struct scan_command {
@@ -113,6 +115,13 @@ typedef struct scan_command {
 /* PCM buffer output size */
 #define PCM_OUT_SIZE                          DEFAULT_AUDIO_IN_FREQ/1000
 #define AUDIO_SAMP_PER_PACKET                 125
+/* Distance (in samples) between queued audio packets
+   when transmitted via UART.
+	 To catch up on 5 queued audio packets, they 
+	 have to be transmitted within a packet time
+	 of AUDIO_SAMP_PER_PACKET samples, e.g.
+	 1 packet every 20 samples. */
+#define AUDIO_QUEUED_PACKET_SPACING           20
 #define PACKET_HDR                            0xDEADBEEF
 #define PACKET_TYPE_FIELD                     4
 #define PACKET_LEN_FIELD                      5
@@ -134,11 +143,16 @@ typedef struct scan_command {
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 26
+#define SOFTWARE_REVISION                     (uint8_t) 27
 
 // scanner debug settings
 #define DEBUG_SCAN_LINES                      128
 #define UART_BAUD_RATE_DEBUG                  1843200
+
+#define ADDR_FLASH_PAGE_59    ((uint32_t)0x0800EC00) /* Base @ of Page 59, 1 Kbyte */
+#define ADDR_FLASH_PAGE_63    ((uint32_t)0x0800FC00) /* Base @ of Page 63, 1 Kbyte */
+#define FLASH_USER_START_ADDR   ADDR_FLASH_PAGE_59   /* Start @ of user Flash area */
+#define FLASH_USER_END_ADDR     ADDR_FLASH_PAGE_63 + FLASH_PAGE_SIZE   /* End @ of user Flash area */
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */

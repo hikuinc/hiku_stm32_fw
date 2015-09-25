@@ -55,9 +55,12 @@ const scan_cmd_t scan_commands[] = {{.cmdChar='M', .scanCmd=SCAN_CMD_MIC},
                                     {.cmdChar='N', .scanCmd=SCAN_CMD_MIC_SCAN},
 																		{.cmdChar='S', .scanCmd=SCAN_CMD_SCAN},
                                     {.cmdChar='L', .scanCmd=SCAN_CMD_LIGHT_ONLY},
-																		{.cmdChar='D', .scanCmd=SCAN_CMD_SCAN_DEBUG}
+																		{.cmdChar='D', .scanCmd=SCAN_CMD_SCAN_DEBUG},
+																		{.cmdChar='E', .scanCmd=SCAN_CMD_FLASH_ERASE}
 																	 };
 
+static scan_enum_t scanCmd = SCAN_CMD_NONE;
+																	 
 /* Private function prototypes -----------------------------------------------*/
 static void SystemClock_Config(void);
 
@@ -455,22 +458,26 @@ int main(void)
   zbar_scanner_t *scanner;
 	uint8_t cmdBuffer[1];
   TIM_HandleTypeDef    TimHandle;
-	scan_enum_t scanCmd = SCAN_CMD_NONE;
   uint32_t scan_lines = 0;
   uint32_t scans = 0;
 	uint32_t i;
-	GPIO_PinState cmd_mode;
+	FLASH_EraseInitTypeDef EraseInitStruct;
+	uint32_t PageError = 0;
+
 		
   /* STM32F0xx HAL library initialization */
   HAL_Init();
 	
   /* Configure the system clock to have a system clock = 48 Mhz */
   SystemClock_Config();
-		
+
+	if (is_command_mode() == GPIO_PIN_RESET) {
+		HAL_FLASH_Unlock();
+	  scanCmd = SCAN_CMD_MIC_SCAN_INSTANT;
+	}
+	
 	Img_Scanner_Configuration();
 
-	cmd_mode = is_command_mode();
-	
 	UART_Config(SCAN_CMD_NONE);
 
 	AudioPacketBuf[0] = ScanPacketBuf[0] = (PACKET_HDR >> 24) & 0xFF;
@@ -485,10 +492,7 @@ int main(void)
 	scan_decoded = 0;
 
 	sendSWVersion();
-	
-	if (cmd_mode == GPIO_PIN_RESET)
-	  scanCmd = SCAN_CMD_MIC_SCAN;
-	
+		
 	cmdBuffer[0] = 0;
 	while (scanCmd == SCAN_CMD_NONE) {
 				uint32_t uart_state;
@@ -508,6 +512,7 @@ int main(void)
 				Mic_Configuration(); 
 				while(1);
 			case SCAN_CMD_MIC_SCAN: 
+			case SCAN_CMD_MIC_SCAN_INSTANT:
 				Mic_Configuration();
 			case SCAN_CMD_SCAN:
 				cmos_sensor_state = CMOS_SENSOR_ARM;
@@ -524,6 +529,14 @@ int main(void)
 				break;
 			case SCAN_CMD_LIGHT_ONLY:
 				setScannerLED(1);
+				while(1);
+			case SCAN_CMD_FLASH_ERASE:
+				HAL_FLASH_Unlock();
+				EraseInitStruct.TypeErase = TYPEERASE_PAGES;
+        EraseInitStruct.PageAddress = FLASH_USER_START_ADDR;
+        EraseInitStruct.NbPages = (FLASH_USER_END_ADDR - FLASH_USER_START_ADDR) / FLASH_PAGE_SIZE;
+        HAL_FLASHEx_Erase(&EraseInitStruct, &PageError);
+			  HAL_FLASH_Lock();
 				while(1);
 			default:
 				while(1);
@@ -624,8 +637,10 @@ static void SystemClock_Config(void)
   */
 void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) // HAL_SPI_TxRxCpltCallback(SPI_HandleTypeDef *hspi)
 {
-	static uint8_t audio_pkt_count = 0;
+	static uint8_t audio_samp_count = 0;
 	static uint8_t discard_samp = 0;
+	static uint32_t flashAddress = FLASH_USER_START_ADDR;
+	static uint32_t flashReadAddress = FLASH_USER_START_ADDR;
 
 	uint32_t i;
 	
@@ -647,10 +662,6 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) // HAL_SPI_TxRxCpltCallback
 				// (1MHz SCK -> 15.625kHz actual recording frequency; 1.024MHz -> 16kHz)			
 				PDM_Filter_64_LSB((uint8_t*)&InternalBufferCopy[0], (uint16_t*)&(RecBuf[0]), DEFAULT_AUDIO_IN_VOLUME , (PDMFilter_InitStruct *)&Filter[0]);
 
-				// Down-sample from 16kHz to 8KHz, convert 16-bit PCM to 8-bit a-law
-				for (i=0; i<(PCM_OUT_SIZE*DEFAULT_AUDIO_IN_CHANNEL_NBR)/2; i++)
-					AudioPacketBuf[PACKET_HDR_LEN + audio_pkt_count*(PCM_OUT_SIZE*DEFAULT_AUDIO_IN_CHANNEL_NBR)/2 + i] = ALaw_Encode(RecBuf[2*i]);
-				
 				// Discard the first samples to allow the microphone's power supply to stabilize
 				// and the PDM filter to stabilize
 				if (discard_samp < AUDIO_DISCARD_SAMP) {
@@ -658,16 +669,44 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) // HAL_SPI_TxRxCpltCallback
 					return;
 				}
 
-				audio_pkt_count++;
+				// Down-sample from 16kHz to 8KHz, convert 16-bit PCM to 8-bit a-law
+				if ((scanCmd == SCAN_CMD_MIC_SCAN_INSTANT) && (flashAddress < FLASH_USER_END_ADDR)) {
+						  for (i=0; i<(PCM_OUT_SIZE*DEFAULT_AUDIO_IN_CHANNEL_NBR)/2; i+=4) {
+							  uint32_t samples = ALaw_Encode(RecBuf[2*(i+3)])&0xFF;
+							  samples = (samples << 8) | (ALaw_Encode(RecBuf[2*(i+2)])&0xFF);
+							  samples = (samples << 8) | (ALaw_Encode(RecBuf[2*(i+1)])&0xFF);
+							  samples = (samples << 8) | (ALaw_Encode(RecBuf[2*i])&0xFF);
+							  HAL_FLASH_Program(TYPEPROGRAM_WORD, 
+																  flashAddress+audio_samp_count*(PCM_OUT_SIZE*DEFAULT_AUDIO_IN_CHANNEL_NBR)/2+i,
+																  samples);
+						}
+				} else
+				   for (i=0; i<(PCM_OUT_SIZE*DEFAULT_AUDIO_IN_CHANNEL_NBR)/2; i++)
+					   AudioPacketBuf[PACKET_HDR_LEN + audio_samp_count*(PCM_OUT_SIZE*DEFAULT_AUDIO_IN_CHANNEL_NBR)/2 + i] = ALaw_Encode(RecBuf[2*i]);
+				
+				if ((flashAddress == FLASH_USER_END_ADDR) && (flashReadAddress < FLASH_USER_END_ADDR)) {
+					if (audio_samp_count % AUDIO_QUEUED_PACKET_SPACING == 0)
+						if(HAL_UART_Transmit_DMA(&UartHandle, AudioPacketBuf, PACKET_HDR_LEN)!= HAL_OK) Error_Handler();
+					if (audio_samp_count % AUDIO_QUEUED_PACKET_SPACING == 2) {
+						if(HAL_UART_Transmit_DMA(&UartHandle,(uint8_t *) flashReadAddress, AUDIO_PAYLOAD_LEN)!= HAL_OK) Error_Handler();
+						flashReadAddress += FLASH_PAGE_SIZE;
+					}
+				}
+					
+				audio_samp_count++;
 			  // send the packet header ahead of time to avoid overwriting of data in AudioPacketBuf
 				// if the interrupt routine is called again prior to the data having been transmitted
-			  if (audio_pkt_count == AUDIO_SAMP_PER_PACKET-1)
-				  if(HAL_UART_Transmit_DMA(&UartHandle, AudioPacketBuf, PACKET_HDR_LEN)!= HAL_OK) Error_Handler();
-				if (audio_pkt_count >= AUDIO_SAMP_PER_PACKET) {
-					audio_pkt_count = 0;
-					if(HAL_UART_Transmit_DMA(&UartHandle, &AudioPacketBuf[PACKET_HDR_LEN], AUDIO_PAYLOAD_LEN)!= HAL_OK) Error_Handler();
-				}
-		}
+			  if ((audio_samp_count == AUDIO_SAMP_PER_PACKET-2) &&
+					 ((scanCmd != SCAN_CMD_MIC_SCAN_INSTANT) || (flashAddress >= FLASH_USER_END_ADDR)))
+				    if(HAL_UART_Transmit_DMA(&UartHandle, AudioPacketBuf, PACKET_HDR_LEN)!= HAL_OK) Error_Handler();
+				if (audio_samp_count >= AUDIO_SAMP_PER_PACKET) {
+					audio_samp_count = 0;
+					if ((scanCmd == SCAN_CMD_MIC_SCAN_INSTANT) && (flashAddress <= FLASH_USER_END_ADDR))
+							flashAddress += FLASH_PAGE_SIZE;
+					if ((scanCmd != SCAN_CMD_MIC_SCAN_INSTANT) || (flashAddress > FLASH_USER_END_ADDR))
+					  if(HAL_UART_Transmit_DMA(&UartHandle, &AudioPacketBuf[PACKET_HDR_LEN], AUDIO_PAYLOAD_LEN)!= HAL_OK) Error_Handler();
+		    }
+			}
 	//HAL_GPIO_WritePin(DEBUG_OUT_PORT, DEBUG_OUT_PIN, GPIO_PIN_RESET);
 }
 
