@@ -552,13 +552,15 @@ int main(void)
 		if (scan_decoded && (scanCmd != SCAN_CMD_SCAN_DEBUG)) {
 			uint32_t uart_state;
 			uint32_t scan_repeat;
+			setScannerLED(0);
+			if (scanCmd == SCAN_CMD_MIC_SCAN_INSTANT)
+				while (HAL_GetTick() < SCAN_PACKET_DELAY);
 			for (scan_repeat=0;scan_repeat<SCAN_REPEAT_RESULT; scan_repeat++) {
 				do {
 					uart_state = HAL_UART_GetState(&UartHandle);
 				} while ((uart_state == HAL_UART_STATE_BUSY) || (uart_state == HAL_UART_STATE_BUSY_TX) || (uart_state == HAL_UART_STATE_BUSY_TX_RX));
 				if(HAL_UART_Transmit_DMA(&UartHandle, ScanPacketBuf, PACKET_HDR_LEN + ScanPacketBuf[PACKET_LEN_FIELD+1])!= HAL_OK) Error_Handler();
 			}
-			setScannerLED(0);
 			while(1);
 		}
 			

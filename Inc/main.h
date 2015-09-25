@@ -122,6 +122,9 @@ typedef struct scan_command {
 	 of AUDIO_SAMP_PER_PACKET samples, e.g.
 	 1 packet every 20 samples. */
 #define AUDIO_QUEUED_PACKET_SPACING           20
+/* minimum delay (in ms) of a scan packet from processor start
+   for instant-on */
+#define SCAN_PACKET_DELAY                     600
 #define PACKET_HDR                            0xDEADBEEF
 #define PACKET_TYPE_FIELD                     4
 #define PACKET_LEN_FIELD                      5
@@ -143,7 +146,7 @@ typedef struct scan_command {
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 27
+#define SOFTWARE_REVISION                     (uint8_t) 28
 
 // scanner debug settings
 #define DEBUG_SCAN_LINES                      128
