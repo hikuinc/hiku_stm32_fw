@@ -33,20 +33,23 @@ struct zbar_scanner_s {
 # define ZBAR_SCANNER_THRESH_MIN  4
 #endif
 
-#ifndef ZBAR_SCANNER_THRESH_INIT_WEIGHT
-# define ZBAR_SCANNER_THRESH_INIT_WEIGHT .44
-#endif
-#ifndef THRESH_INIT
+//#ifndef ZBAR_SCANNER_THRESH_INIT_WEIGHT
+//# define ZBAR_SCANNER_THRESH_INIT_WEIGHT .44
+//#endif
+# define ZBAR_SCANNER_THRESH_INIT_WEIGHT .2
+
+//#ifndef THRESH_INIT
 #define THRESH_INIT ((unsigned)((ZBAR_SCANNER_THRESH_INIT_WEIGHT       \
                                  * (1 << (ZBAR_FIXED + 1)) + 1) / 2))
-#endif
+//#endif
 
 #ifndef ZBAR_SCANNER_THRESH_FADE
 # define ZBAR_SCANNER_THRESH_FADE 8
 #endif
 #define ZBAR_SCANNER_THRESH_FADE_SHIFT 3
 
-#define ZBAR_SCANNER_EWMA_WEIGHT 0.8
+//#define ZBAR_SCANNER_EWMA_WEIGHT 0.8
+#define ZBAR_SCANNER_EWMA_WEIGHT 0.9
 #define EWMA_WEIGHT ((unsigned)((ZBAR_SCANNER_EWMA_WEIGHT              \
                                  * (1 << (ZBAR_FIXED + 1)) + 1) / 2))
 //#endif

@@ -568,13 +568,28 @@ int main(void)
 		while (cmos_sensor_state != CMOS_SENSOR_STOP); 
 		// switch between ping-pong buffers
 		img_buf_wr_ptr ^= 1;				
-		// alternate high gain and low gain scans
-		setScannerGAIN(scans%2 == 0);
+		// high gain for 3 scans, low gain for 1 scan
+		setScannerGAIN(scans%4 == 0);
 		cmos_sensor_state = CMOS_SENSOR_READY;
+		
+		unsigned char min_val = 255, max_val=0, val, scale;
+		uint32_t j;
+				for (j=SCAN_CONTRAST_BORDERS; j<IMAGE_COLUMNS-SCAN_CONTRAST_BORDERS; j++) {
+					val = img_buf[img_buf_wr_ptr^1][j];
+					if (val > max_val)
+						max_val = val;
+					if (val < min_val)
+						min_val = val;
+				}
+				if (max_val-min_val <= SCAN_CONTRAST_SCALE)
+				  scale = SCAN_CONTRAST_SCALE/(max_val-min_val);
+				  for (j=0; j<IMAGE_COLUMNS; j++)
+				    img_buf[img_buf_wr_ptr^1][j] = scale * (img_buf[img_buf_wr_ptr^1][j]-min_val);
+     
 		if (scanCmd == SCAN_CMD_SCAN_DEBUG) {
-			if (scans % 4 == 2)
+			if (scans % DEBUG_CAPTURE_NTH == 2)
 				if(HAL_UART_Transmit_DMA(&UartHandle, AudioPacketBuf, PACKET_HDR_LEN)!= HAL_OK) Error_Handler();
-			if ((scan_lines < DEBUG_SCAN_LINES) && scans && ((scan_lines < DEBUG_SCAN_LINES/2) ? (scans % 4 == 0) : (scans % 4 == 3)) ) {
+			if ((scan_lines < DEBUG_SCAN_LINES) && scans && ((scan_lines < DEBUG_SCAN_LINES/2) ? (scans % DEBUG_CAPTURE_NTH == 0) : (scans % DEBUG_CAPTURE_NTH == 3)) ) {
 					if(HAL_UART_Transmit_DMA(&UartHandle, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
 					scan_lines++;
 				}

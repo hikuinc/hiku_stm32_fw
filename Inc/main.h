@@ -146,10 +146,19 @@ typedef struct scan_command {
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 28
+#define SOFTWARE_REVISION                     (uint8_t) 29
 
 // scanner debug settings
 #define DEBUG_SCAN_LINES                      128
+// pixels on the left and right side of the image to
+// discard when calculating min/max values to stretch
+// the image contrast
+#define SCAN_CONTRAST_BORDERS                 100
+// scaling factor for contrast stretch
+#define SCAN_CONTRAST_SCALE                   47
+
+// capture every 8th scan line and send the image to the Imp
+#define DEBUG_CAPTURE_NTH                     8
 #define UART_BAUD_RATE_DEBUG                  1843200
 
 #define ADDR_FLASH_PAGE_59    ((uint32_t)0x0800EC00) /* Base @ of Page 59, 1 Kbyte */
