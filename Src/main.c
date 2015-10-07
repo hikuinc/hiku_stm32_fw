@@ -50,13 +50,15 @@ uint8_t  img_buf[2][IMAGE_COLUMNS];
 uint32_t img_buf_wr_ptr = 0;
 
 static uint8_t scan_decoded;
+static uint8_t stop_audio;
 
 const scan_cmd_t scan_commands[] = {{.cmdChar='M', .scanCmd=SCAN_CMD_MIC},
                                     {.cmdChar='N', .scanCmd=SCAN_CMD_MIC_SCAN},
 																		{.cmdChar='S', .scanCmd=SCAN_CMD_SCAN},
                                     {.cmdChar='L', .scanCmd=SCAN_CMD_LIGHT_ONLY},
 																		{.cmdChar='D', .scanCmd=SCAN_CMD_SCAN_DEBUG},
-																		{.cmdChar='E', .scanCmd=SCAN_CMD_FLASH_ERASE}
+																		{.cmdChar='E', .scanCmd=SCAN_CMD_FLASH_ERASE},
+																		{.cmdChar='B', .scanCmd=SCAN_CMD_BUTTON_RELEASE}
 																	 };
 
 static scan_enum_t scanCmd = SCAN_CMD_NONE;
@@ -358,7 +360,7 @@ void Img_Scanner_Configuration(void)
 	AdcHandle.Init.ContinuousConvMode    = DISABLE;
   AdcHandle.Init.DiscontinuousConvMode = DISABLE;
 	AdcHandle.Init.ExternalTrigConv      = SCAN_VOUT_ADC_TRIG;
-	AdcHandle.Init.ExternalTrigConvEdge  = ADC_EXTERNALTRIGCONVEDGE_RISING; //ADC_EXTERNALTRIGCONVEDGE_FALLING; 
+	AdcHandle.Init.ExternalTrigConvEdge  = ADC_EXTERNALTRIGCONVEDGE_FALLING; 
   AdcHandle.Init.EOCSelection          = EOC_SINGLE_CONV; // convert once per trigger
   AdcHandle.Init.DMAContinuousRequests = DISABLE; 
   AdcHandle.Init.Overrun               = OVR_DATA_OVERWRITTEN;
@@ -490,6 +492,7 @@ int main(void)
 	AudioPacketBuf[PACKET_LEN_FIELD+1] = AUDIO_PAYLOAD_LEN & 0xFF;
 
 	scan_decoded = 0;
+	stop_audio = 0;
 
 	sendSWVersion();
 		
@@ -547,8 +550,16 @@ int main(void)
 	zbar_decoder_set_handler(decoder, symbol_handler);
 
 	zbar_scanner_new_scan(scanner);
+	
+	cmdBuffer[0] = 0;
+	HAL_UART_Receive_DMA(&UartHandle, cmdBuffer, 1);
 
 	while(1) {
+		if (cmdBuffer[0] == 'B') {
+			setScannerLED(0);
+			stop_audio = 1;
+			while(1);
+		}
 		if (scan_decoded && (scanCmd != SCAN_CMD_SCAN_DEBUG)) {
 			uint32_t uart_state;
 			uint32_t scan_repeat;
@@ -583,13 +594,15 @@ int main(void)
 				}
 				if (max_val-min_val <= SCAN_CONTRAST_SCALE)
 				  scale = SCAN_CONTRAST_SCALE/(max_val-min_val);
+				  if (scale>3)
+						scale = 3;
 				  for (j=0; j<IMAGE_COLUMNS; j++)
 				    img_buf[img_buf_wr_ptr^1][j] = scale * (img_buf[img_buf_wr_ptr^1][j]-min_val);
      
 		if (scanCmd == SCAN_CMD_SCAN_DEBUG) {
-			if (scans % DEBUG_CAPTURE_NTH == 2)
+			if (scans % DEBUG_CAPTURE_NTH == 0)
 				if(HAL_UART_Transmit_DMA(&UartHandle, AudioPacketBuf, PACKET_HDR_LEN)!= HAL_OK) Error_Handler();
-			if ((scan_lines < DEBUG_SCAN_LINES) && scans && ((scan_lines < DEBUG_SCAN_LINES/2) ? (scans % DEBUG_CAPTURE_NTH == 0) : (scans % DEBUG_CAPTURE_NTH == 3)) ) {
+			if ((scan_lines < DEBUG_SCAN_LINES) && ((scan_lines < DEBUG_SCAN_LINES/2) ? (scans % DEBUG_CAPTURE_NTH == 6) : (scans % DEBUG_CAPTURE_NTH == 5)) ) {
 					if(HAL_UART_Transmit_DMA(&UartHandle, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
 					scan_lines++;
 				}
@@ -658,6 +671,7 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) // HAL_SPI_TxRxCpltCallback
 	static uint8_t discard_samp = 0;
 	static uint32_t flashAddress = FLASH_USER_START_ADDR;
 	static uint32_t flashReadAddress = FLASH_USER_START_ADDR;
+	static uint8_t audio_stopped = 0;
 
 	uint32_t i;
 	
@@ -714,14 +728,17 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) // HAL_SPI_TxRxCpltCallback
 			  // send the packet header ahead of time to avoid overwriting of data in AudioPacketBuf
 				// if the interrupt routine is called again prior to the data having been transmitted
 			  if ((audio_samp_count == AUDIO_SAMP_PER_PACKET-2) &&
-					 ((scanCmd != SCAN_CMD_MIC_SCAN_INSTANT) || (flashAddress >= FLASH_USER_END_ADDR)))
+					 ((scanCmd != SCAN_CMD_MIC_SCAN_INSTANT) || (flashAddress >= FLASH_USER_END_ADDR)) && !audio_stopped)
 				    if(HAL_UART_Transmit_DMA(&UartHandle, AudioPacketBuf, PACKET_HDR_LEN)!= HAL_OK) Error_Handler();
 				if (audio_samp_count >= AUDIO_SAMP_PER_PACKET) {
 					audio_samp_count = 0;
 					if ((scanCmd == SCAN_CMD_MIC_SCAN_INSTANT) && (flashAddress <= FLASH_USER_END_ADDR))
 							flashAddress += FLASH_PAGE_SIZE;
-					if ((scanCmd != SCAN_CMD_MIC_SCAN_INSTANT) || (flashAddress > FLASH_USER_END_ADDR))
+					if (((scanCmd != SCAN_CMD_MIC_SCAN_INSTANT) || (flashAddress > FLASH_USER_END_ADDR)) && !audio_stopped) {
 					  if(HAL_UART_Transmit_DMA(&UartHandle, &AudioPacketBuf[PACKET_HDR_LEN], AUDIO_PAYLOAD_LEN)!= HAL_OK) Error_Handler();
+						if (stop_audio)
+							audio_stopped = 1;
+					}
 		    }
 			}
 	//HAL_GPIO_WritePin(DEBUG_OUT_PORT, DEBUG_OUT_PIN, GPIO_PIN_RESET);
@@ -745,7 +762,14 @@ void HAL_SPI_RxCpltCallback(SPI_HandleTypeDef *hspi) // HAL_SPI_TxRxCpltCallback
   */
 void Error_Handler(void)
 {
-  while (1);
+	// flash scanner LEDs to signal an error
+  while (1) {
+		uint32_t j;
+		for (j=0; j<500000; j++);
+		setScannerLED(0);
+		for (j=0; j<500000; j++);
+		setScannerLED(1);				
+	}	
 }
 
 #ifdef  USE_FULL_ASSERT
