@@ -202,7 +202,14 @@ void setScannerLED (uint8_t value) {
 
 /* set scanner image sensor gain high/low */
 void setScannerGAIN (uint8_t value) {
-	HAL_GPIO_WritePin(SCAN_GS_PORT, SCAN_GS_PIN, value ? GPIO_PIN_SET : GPIO_PIN_RESET);
+	// use pull-up/pull-down to set gain to avoid shorting the TRIG output
+	// on MT710TH
+  GPIO_InitTypeDef GPIO_InitStruct;
+  GPIO_InitStruct.Pin = SCAN_GS_PIN;
+  GPIO_InitStruct.Mode = SCAN_GS_MODE;
+  GPIO_InitStruct.Pull = value ? GPIO_PULLUP : GPIO_PULLDOWN;
+  GPIO_InitStruct.Speed = SCAN_GS_SPEED;
+  HAL_GPIO_Init(SCAN_GS_PORT, &GPIO_InitStruct);  
 }
 
 void toggleDebug() {
@@ -238,14 +245,13 @@ void Img_Scanner_Configuration(void)
   /*
   *  Image sensor chip enable (active low), MT710T SENSOR_PD/pin 8
   */
+  /* enable image sensor */
 	SENSOR_PD_CLK_ENABLE();
   GPIO_InitStruct.Pin = SENSOR_PD_PIN;
   GPIO_InitStruct.Mode = SENSOR_PD_MODE;
   GPIO_InitStruct.Pull = SENSOR_PD_PULL;
   GPIO_InitStruct.Speed = SENSOR_PD_SPEED;
   HAL_GPIO_Init(SENSOR_PD_PORT, &GPIO_InitStruct);  
-  /* enable image sensor */
-  HAL_GPIO_WritePin(SENSOR_PD_PORT, SENSOR_PD_PIN, GPIO_PIN_RESET); 
 
   /*
   *  Scanner LED enable PA6, MT700 pin 3
@@ -269,7 +275,7 @@ void Img_Scanner_Configuration(void)
   GPIO_InitStruct.Speed = SCAN_GS_SPEED;
   HAL_GPIO_Init(SCAN_GS_PORT, &GPIO_InitStruct);  
   /* set high gain */
-  HAL_GPIO_WritePin(SCAN_GS_PORT, SCAN_GS_PIN, GPIO_PIN_SET); 
+	setScannerGAIN(0);
 
   /*
   *  Scan line start/end, MT710T SYNC/pin 1
@@ -285,30 +291,6 @@ void Img_Scanner_Configuration(void)
   HAL_NVIC_SetPriority(SCAN_SYNC_EXTI_IRQn, 0x01, 0x00);
   HAL_NVIC_EnableIRQ(SCAN_SYNC_EXTI_IRQn);
   	
-  /*
-  *  Scanner start pulse signal, MT710T SP/pin 6
-  */			 
-
-  TimHandleSp.Instance = SCAN_SP_TIM;
-  TimHandleSp.Init.Prescaler         = SCAN_SP_PRESCALER;
-  TimHandleSp.Init.Period            = SCAN_SP_PERIOD;
-  TimHandleSp.Init.ClockDivision     = 0;
-  TimHandleSp.Init.CounterMode       = TIM_COUNTERMODE_UP;
-  TimHandleSp.Init.RepetitionCounter = 0;
-  if (HAL_TIM_PWM_Init(&TimHandleSp) != HAL_OK) Error_Handler();
-
-  sConfig.OCMode       = TIM_OCMODE_PWM1;
-  sConfig.OCPolarity   = TIM_OCPOLARITY_HIGH;
-  sConfig.OCFastMode   = TIM_OCFAST_DISABLE;
-  sConfig.OCNPolarity  = TIM_OCNPOLARITY_HIGH;
-  sConfig.OCIdleState  = TIM_OCIDLESTATE_RESET;
-  sConfig.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  sConfig.Pulse = SCAN_SP_PULSE;
-  if (HAL_TIM_PWM_ConfigChannel(&TimHandleSp, &sConfig, SCAN_SP_TIM_CHANNEL) != HAL_OK) Error_Handler();
-	 
-  HAL_NVIC_SetPriority(SCAN_SP_IRQn, 0x01, 0x00);
-  HAL_NVIC_EnableIRQ(SCAN_SP_IRQn);
-
   /*
   *  Scanner clock pulse signal, MT710T CP/pin 7
   */
@@ -334,6 +316,41 @@ void Img_Scanner_Configuration(void)
 	if (HAL_TIMEx_MasterConfigSynchronization(&TimHandle, &sMasterConfig)!= HAL_OK) Error_Handler();
 	
 	if (HAL_TIM_PWM_Start(&TimHandle, SCAN_CP_TIM_CHANNEL)!= HAL_OK) Error_Handler();
+
+	// On the MT710TH the TRIG output is connected to either 
+	// GS (DVT version) or SENSOR_PD (EVT version).
+	// TRIG is an inverted copy of the clock signal CP and will
+	// set GS or SENSOR_PD high on some samples.
+	// On the MT710T, both GS and SENSOR_PD should be pulled
+	// low at sampling time.
+	is_mt710th = 0;
+	uint32_t i;
+	for (i=0; i<2*SCAN_CP_PERIOD; i++)
+		is_mt710th |= HAL_GPIO_ReadPin(SCAN_GS_PORT, SCAN_GS_PIN) | HAL_GPIO_ReadPin(SENSOR_PD_PORT, SENSOR_PD_PIN);
+
+  /*
+  *  Scanner start pulse signal, MT710T SP/pin 6
+  */			 
+
+  TimHandleSp.Instance = SCAN_SP_TIM;
+  TimHandleSp.Init.Prescaler         = SCAN_SP_PRESCALER;
+  TimHandleSp.Init.Period            = SCAN_SP_PERIOD;
+  TimHandleSp.Init.ClockDivision     = 0;
+  TimHandleSp.Init.CounterMode       = TIM_COUNTERMODE_UP;
+  TimHandleSp.Init.RepetitionCounter = 0;
+  if (HAL_TIM_PWM_Init(&TimHandleSp) != HAL_OK) Error_Handler();
+
+  sConfig.OCMode       = TIM_OCMODE_PWM1;
+  sConfig.OCPolarity   = TIM_OCPOLARITY_HIGH;
+  sConfig.OCFastMode   = TIM_OCFAST_DISABLE;
+  sConfig.OCNPolarity  = TIM_OCNPOLARITY_HIGH;
+  sConfig.OCIdleState  = TIM_OCIDLESTATE_RESET;
+  sConfig.OCNIdleState = TIM_OCNIDLESTATE_RESET;
+  sConfig.Pulse = is_mt710th ? SCAN_SP_PULSE_MT710TH : SCAN_SP_PULSE_MT710T;
+  if (HAL_TIM_PWM_ConfigChannel(&TimHandleSp, &sConfig, SCAN_SP_TIM_CHANNEL) != HAL_OK) Error_Handler();
+	 
+  HAL_NVIC_SetPriority(SCAN_SP_IRQn, 0x01, 0x00);
+  HAL_NVIC_EnableIRQ(SCAN_SP_IRQn);
 
  /*
   *  Debug output pin
@@ -374,10 +391,10 @@ void Img_Scanner_Configuration(void)
   /* ### - 3 - Channel configuration ######################################## */
   adc_sConfig.Channel      = SCAN_VOUT_ADC_CHANNEL;
   adc_sConfig.Rank         = ADC_RANK_CHANNEL_NUMBER;
-  adc_sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5; //ADC_SAMPLETIME_28CYCLES_5;
+  adc_sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
   if (HAL_ADC_ConfigChannel(&AdcHandle, &adc_sConfig) != HAL_OK) Error_Handler();
 
-	if (HAL_TIM_PWM_Start_IT(&TimHandleSp, SCAN_SP_TIM_CHANNEL)!= HAL_OK) Error_Handler();
+	if (HAL_TIM_PWM_Start_IT(&TimHandleSp, SCAN_SP_TIM_CHANNEL)!= HAL_OK) Error_Handler();	
 }
 
 void Mic_Configuration() {
@@ -518,13 +535,13 @@ int main(void)
 			case SCAN_CMD_MIC_SCAN_INSTANT:
 				Mic_Configuration();
 			case SCAN_CMD_SCAN:
-				cmos_sensor_state = CMOS_SENSOR_ARM;
+				cmos_sensor_state = CMOS_SENSOR_READY;
 				setScannerLED(1);
 				break;
 			case SCAN_CMD_SCAN_DEBUG:
 				// set higher baud rate for transferring debug data
 				UART_Config(SCAN_CMD_SCAN_DEBUG);
-				cmos_sensor_state = CMOS_SENSOR_ARM;
+				cmos_sensor_state = CMOS_SENSOR_READY;
 			  AudioPacketBuf[PACKET_TYPE_FIELD] = PKT_TYPE_SCAN_DEBUG;
 				AudioPacketBuf[PACKET_LEN_FIELD] = (IMAGE_COLUMNS >> 8) & 0xFF;
 		    AudioPacketBuf[PACKET_LEN_FIELD+1] = IMAGE_COLUMNS & 0xFF;
@@ -553,7 +570,7 @@ int main(void)
 	
 	cmdBuffer[0] = 0;
 	HAL_UART_Receive_DMA(&UartHandle, cmdBuffer, 1);
-
+		
 	while(1) {
 		if (cmdBuffer[0] == 'B') {
 			setScannerLED(0);

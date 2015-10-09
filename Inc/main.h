@@ -147,7 +147,7 @@ typedef struct scan_command {
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 30
+#define SOFTWARE_REVISION                     (uint8_t) 31
 
 // scanner debug settings
 #define DEBUG_SCAN_LINES                      128
@@ -159,7 +159,7 @@ typedef struct scan_command {
 #define SCAN_CONTRAST_SCALE                   47
 
 // capture every 8th scan line and send the image to the Imp
-#define DEBUG_CAPTURE_NTH                     8
+#define DEBUG_CAPTURE_NTH                     16
 #define UART_BAUD_RATE_DEBUG                  1843200
 
 #define ADDR_FLASH_PAGE_59    ((uint32_t)0x0800EC00) /* Base @ of Page 59, 1 Kbyte */

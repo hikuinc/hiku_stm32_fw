@@ -51,6 +51,7 @@
   */
 
 volatile uint32_t cmos_sensor_state;
+uint8_t is_mt710th;
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -177,8 +178,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 		case SCAN_SYNC_PIN:
 			if (cmos_sensor_state == CMOS_SENSOR_ARM)	{
 				  cmos_sensor_state = CMOS_SENSOR_CAPTURE;
-	        if (HAL_ADC_Start_DMA(&AdcHandle, (uint32_t *) img_buf[img_buf_wr_ptr], IMAGE_COLUMNS) != HAL_OK) Error_Handler();
-				  HAL_GPIO_TogglePin(DEBUG_OUT_PORT, DEBUG_OUT_PIN);
+	        if (!is_mt710th && (HAL_ADC_Start_DMA(&AdcHandle, (uint32_t *) img_buf[img_buf_wr_ptr], IMAGE_COLUMNS) != HAL_OK)) Error_Handler();
 			}
 		}
 }
@@ -187,11 +187,12 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 // signals availability of the first data sample;
 // interrupt handler driven by an external input pin
 
-// HACK
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim) {
 	if (htim->Instance == SCAN_SP_TIM) {
-	  if (cmos_sensor_state == CMOS_SENSOR_READY)
+	  if (cmos_sensor_state == CMOS_SENSOR_READY) {
 	    cmos_sensor_state = CMOS_SENSOR_ARM;
+			if (is_mt710th && (HAL_ADC_Start_DMA(&AdcHandle, (uint32_t *) img_buf[img_buf_wr_ptr], IMAGE_COLUMNS) != HAL_OK)) Error_Handler();
+		}
 	}
 }
 

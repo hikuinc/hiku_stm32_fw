@@ -19,6 +19,8 @@ extern volatile uint32_t cmos_sensor_state;
 extern uint8_t img_buf[2][IMAGE_COLUMNS];
 extern uint32_t img_buf_wr_ptr;
 
+extern uint8_t is_mt710th;
+
 // number of decoded scans to keep in a FIFO for a "best of"
 // best of 5: 3 identical scans out of 5 decoded scans
 // needed to signal a recognized barcode
