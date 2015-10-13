@@ -141,13 +141,14 @@ typedef struct scan_command {
 #define PKT_TYPE_AUDIO                        0x10
 #define PKT_TYPE_SCAN                         0x20
 #define PKT_TYPE_SCAN_DEBUG                   0xDB
+#define PKT_TYPE_SCAN_PERF                    0xDC
 
 #define UART_BAUD_RATE                        921600
 #define UART_RECEIVE_TIMEOUT                  500
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 31
+#define SOFTWARE_REVISION                     (uint8_t) 32
 
 // scanner debug settings
 #define DEBUG_SCAN_LINES                      128

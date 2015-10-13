@@ -600,8 +600,11 @@ int main(void)
 		setScannerGAIN(scans%4 == 0);
 		cmos_sensor_state = CMOS_SENSOR_READY;
 		
-		unsigned char min_val = 255, max_val=0, val, scale;
+		uint8_t min_val, max_val, val, scale;
 		uint32_t j;
+		min_val = 255;
+		max_val=0;
+		scale = 1;
 				for (j=SCAN_CONTRAST_BORDERS; j<IMAGE_COLUMNS-SCAN_CONTRAST_BORDERS; j++) {
 					val = img_buf[img_buf_wr_ptr^1][j];
 					if (val > max_val)
@@ -609,12 +612,12 @@ int main(void)
 					if (val < min_val)
 						min_val = val;
 				}
-				if (max_val-min_val <= SCAN_CONTRAST_SCALE)
+				if (max_val-min_val <= SCAN_CONTRAST_SCALE) {
 				  scale = SCAN_CONTRAST_SCALE/(max_val-min_val);
-				  if (scale>3)
-						scale = 3;
-				  for (j=0; j<IMAGE_COLUMNS; j++)
-				    img_buf[img_buf_wr_ptr^1][j] = scale * (img_buf[img_buf_wr_ptr^1][j]-min_val);
+				  if (scale>4)
+						scale = 4;
+				}
+				
      
 		if (scanCmd == SCAN_CMD_SCAN_DEBUG) {
 			if (scans % DEBUG_CAPTURE_NTH == 0)
@@ -627,7 +630,7 @@ int main(void)
 		scans++;
 						
 		// Process the full image array, calling symbol_handler when a barcode is detected
-		zbar_scan_y_new(scanner, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS);
+		zbar_scan_y_new(scanner, img_buf[img_buf_wr_ptr^1], IMAGE_COLUMNS, min_val, scale);
 		// Process unfinished edges and start a new scan
 		zbar_scanner_new_scan(scanner);			
 	}

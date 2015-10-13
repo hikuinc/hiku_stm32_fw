@@ -92,31 +92,21 @@ static inline unsigned calc_thresh_new (zbar_scanner_t *scn, unsigned x)
 }
 
 zbar_symbol_type_t zbar_scan_y_new (zbar_scanner_t *scn,
-                                uint8_t *img_buf, uint32_t size)
+                                uint8_t *img_buf, uint32_t size,
+                                uint8_t min_val, uint8_t scale)
 {
 	  register int x;
     zbar_symbol_type_t edge = ZBAR_NONE;
     register int y0_0 = img_buf[0]; 
     register int y0_1 = y0_0;
-    register int y0_2 = y0_0;
     register int y1_1 = 0;
     register int y1_2 = 0;
     register int y2_1 = 0;
     register int y2_2 = 0;
 
 	for (x=0; x<size; x++){
-    /* 1st differential @ x-1 */
-    y1_2 = y1_1;
-    y1_1 = y0_1 - y0_2;
-    if((abs(y1_1) < abs(y1_2)) &&
-       ((y1_1 >= 0) == (y1_2 >= 0)))
-        y1_1 = y1_2;
-
-    /* 2nd differentials*/
-    y2_2 = y2_1;
-    y2_1 = y0_0 - (y0_1 * 2) + y0_2;
-
     /* 2nd zero-crossing is 1st local min/max - could be edge */
+		// !y2_1 || ((y2_1 ^ y2_2) < 0)
     if((!y2_1 ||
         ((y2_1 > 0) ? y2_2 < 0 : y2_2 > 0)) &&
        (calc_thresh_new(scn, x) <= abs(y1_1)))
@@ -149,9 +139,24 @@ zbar_symbol_type_t zbar_scan_y_new (zbar_scanner_t *scn,
             scn->cur_edge += x << ZBAR_FIXED;
         }
     }
-		y0_2 = y0_1;
+    /* 1st differential @ x-1 */
+		y1_2 = y1_1;
+		y1_1 = y0_0 - y0_1;
     y0_1 = y0_0;
-    y0_0 += ((int)((img_buf[x+1] - y0_1) * EWMA_WEIGHT)) >> ZBAR_FIXED;
+		// move scale multiplication in here
+		// load img_buf as 32-bit register and apply scale multiplication and
+		// minimum subtraction to 2 bytes within the register
+		// use shift and mask instead of multiplication to scale
+		if (scale > 1)
+			y0_0 += ((int)(((img_buf[x+1]-min_val)*scale - y0_1) * EWMA_WEIGHT)) >> ZBAR_FIXED;
+		else
+			y0_0 += ((int)((img_buf[x+1] - y0_1) * EWMA_WEIGHT)) >> ZBAR_FIXED;
+    /* 2nd differentials*/
+		y2_2 = y2_1;
+		y2_1 = y0_0 - y1_1 - y0_1;
+    if((abs(y1_1) < abs(y1_2)) &&
+       ((y1_1 >= 0) == (y1_2 >= 0)))
+        y1_1 = y1_2;
 	}
 		scn->x = x;
     return(edge);
