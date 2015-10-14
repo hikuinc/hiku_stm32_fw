@@ -97,7 +97,11 @@ zbar_symbol_type_t zbar_scan_y_new (zbar_scanner_t *scn,
 {
 	  register int x;
     zbar_symbol_type_t edge = ZBAR_NONE;
-    register int y0_0 = img_buf[0]; 
+    register int y0_0;
+		if (scale > 1)
+			y0_0 = ((int)(img_buf[0]-min_val)*scale);
+		else
+      y0_0 = img_buf[0]; 
     register int y0_1 = y0_0;
     register int y1_1 = 0;
     register int y1_2 = 0;

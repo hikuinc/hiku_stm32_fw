@@ -50,7 +50,7 @@
   * @{
   */
 
-volatile uint32_t cmos_sensor_state;
+volatile uint32_t cmos_sensor_state = CMOS_SENSOR_STOP;
 uint8_t is_mt710th;
 
 /* Private typedef -----------------------------------------------------------*/

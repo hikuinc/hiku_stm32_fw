@@ -55,6 +55,7 @@ static uint8_t stop_audio;
 const scan_cmd_t scan_commands[] = {{.cmdChar='M', .scanCmd=SCAN_CMD_MIC},
                                     {.cmdChar='N', .scanCmd=SCAN_CMD_MIC_SCAN},
 																		{.cmdChar='S', .scanCmd=SCAN_CMD_SCAN},
+																		{.cmdChar='P', .scanCmd=SCAN_CMD_SCAN_SCREEN},																		
                                     {.cmdChar='L', .scanCmd=SCAN_CMD_LIGHT_ONLY},
 																		{.cmdChar='D', .scanCmd=SCAN_CMD_SCAN_DEBUG},
 																		{.cmdChar='E', .scanCmd=SCAN_CMD_FLASH_ERASE},
@@ -92,13 +93,6 @@ void UART_Config(scan_enum_t scanCmd) {
   UartHandle.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
   if(HAL_UART_DeInit(&UartHandle) != HAL_OK) Error_Handler();
   if(HAL_UART_Init(&UartHandle) != HAL_OK) Error_Handler();
-}
-
-// Send string via UART
-void SendString(char* data_string){
-	uint32_t char_count=0;	
-	while (char_count<255 && data_string[char_count] != 0) char_count++;
-	if(HAL_UART_Transmit_DMA(&UartHandle, (uint8_t*) data_string, char_count)!= HAL_OK) Error_Handler();
 }
 
 /**
@@ -234,7 +228,7 @@ void sendSWVersion(){
 	  if(HAL_UART_Transmit(&UartHandle, pkt_buf, PACKET_HDR_LEN + pkt_buf[PACKET_LEN_FIELD+1], 20)!= HAL_OK) Error_Handler();
 }
 
-void Img_Scanner_Configuration(void)
+void Img_Scanner_Configuration(scan_enum_t scanCmd)
 { 												
   GPIO_InitTypeDef GPIO_InitStruct;
   TIM_HandleTypeDef    TimHandle;
@@ -296,7 +290,7 @@ void Img_Scanner_Configuration(void)
   */
   TimHandle.Instance = SCAN_CP_TIM;
   TimHandle.Init.Prescaler         = SCAN_CP_PRESCALER;
-  TimHandle.Init.Period            = SCAN_CP_PERIOD;
+	TimHandle.Init.Period            = (scanCmd == SCAN_CMD_SCAN_SCREEN) ? SCAN_CP_PERIOD_SCREEN : SCAN_CP_PERIOD;
   TimHandle.Init.ClockDivision     = 0;
   TimHandle.Init.CounterMode       = TIM_COUNTERMODE_UP;
   TimHandle.Init.RepetitionCounter = 0;
@@ -334,7 +328,7 @@ void Img_Scanner_Configuration(void)
 
   TimHandleSp.Instance = SCAN_SP_TIM;
   TimHandleSp.Init.Prescaler         = SCAN_SP_PRESCALER;
-  TimHandleSp.Init.Period            = SCAN_SP_PERIOD;
+	TimHandleSp.Init.Period            = (scanCmd == SCAN_CMD_SCAN_SCREEN) ? SCAN_SP_PERIOD_SCREEN : SCAN_SP_PERIOD;
   TimHandleSp.Init.ClockDivision     = 0;
   TimHandleSp.Init.CounterMode       = TIM_COUNTERMODE_UP;
   TimHandleSp.Init.RepetitionCounter = 0;
@@ -391,7 +385,7 @@ void Img_Scanner_Configuration(void)
   /* ### - 3 - Channel configuration ######################################## */
   adc_sConfig.Channel      = SCAN_VOUT_ADC_CHANNEL;
   adc_sConfig.Rank         = ADC_RANK_CHANNEL_NUMBER;
-  adc_sConfig.SamplingTime = ADC_SAMPLETIME_7CYCLES_5;
+  adc_sConfig.SamplingTime = (scanCmd == SCAN_CMD_SCAN_SCREEN) ? ADC_SAMPLETIME_41CYCLES_5 : ADC_SAMPLETIME_7CYCLES_5;
   if (HAL_ADC_ConfigChannel(&AdcHandle, &adc_sConfig) != HAL_OK) Error_Handler();
 
 	if (HAL_TIM_PWM_Start_IT(&TimHandleSp, SCAN_SP_TIM_CHANNEL)!= HAL_OK) Error_Handler();	
@@ -495,7 +489,7 @@ int main(void)
 	  scanCmd = SCAN_CMD_MIC_SCAN_INSTANT;
 	}
 	
-	Img_Scanner_Configuration();
+	Img_Scanner_Configuration(SCAN_CMD_NONE);
 
 	UART_Config(SCAN_CMD_NONE);
 
@@ -534,7 +528,10 @@ int main(void)
 			case SCAN_CMD_MIC_SCAN: 
 			case SCAN_CMD_MIC_SCAN_INSTANT:
 				Mic_Configuration();
-			case SCAN_CMD_SCAN:
+			case SCAN_CMD_SCAN_SCREEN: 
+		  case SCAN_CMD_SCAN:
+				if (scanCmd == SCAN_CMD_SCAN_SCREEN)
+		      Img_Scanner_Configuration(SCAN_CMD_SCAN_SCREEN);
 				cmos_sensor_state = CMOS_SENSOR_READY;
 				setScannerLED(1);
 				break;
@@ -598,6 +595,8 @@ int main(void)
 		img_buf_wr_ptr ^= 1;				
 		// high gain for 3 scans, low gain for 1 scan
 		setScannerGAIN(scans%4 == 0);
+		if (scanCmd == SCAN_CMD_SCAN_SCREEN)
+		  setScannerLED(scans%3 == 0);
 		cmos_sensor_state = CMOS_SENSOR_READY;
 		
 		uint8_t min_val, max_val, val, scale;
@@ -616,9 +615,15 @@ int main(void)
 				  scale = SCAN_CONTRAST_SCALE/(max_val-min_val);
 				  if (scale>4)
 						scale = 4;
+					// perform contrast scaling outside of scan_y routine in debug mode
+					// to make it visible in debug image
+					if (scanCmd == SCAN_CMD_SCAN_DEBUG) {
+						for (j=0; j<IMAGE_COLUMNS; j++)
+							img_buf[img_buf_wr_ptr^1][j] = (img_buf[img_buf_wr_ptr^1][j]-min_val)*scale;
+						scale = 1;
+					}
 				}
-				
-     
+				 
 		if (scanCmd == SCAN_CMD_SCAN_DEBUG) {
 			if (scans % DEBUG_CAPTURE_NTH == 0)
 				if(HAL_UART_Transmit_DMA(&UartHandle, AudioPacketBuf, PACKET_HDR_LEN)!= HAL_OK) Error_Handler();

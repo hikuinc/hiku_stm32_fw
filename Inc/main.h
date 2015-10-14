@@ -20,6 +20,7 @@ typedef enum {
 	SCAN_CMD_MIC_SCAN,
 	SCAN_CMD_MIC_SCAN_INSTANT,
 	SCAN_CMD_SCAN,
+	SCAN_CMD_SCAN_SCREEN,
 	SCAN_CMD_LIGHT_ONLY,
 	SCAN_CMD_SCAN_DEBUG,
 	SCAN_CMD_FLASH_ERASE,
@@ -148,7 +149,7 @@ typedef struct scan_command {
 
 // software version to send to the Imp 
 #define SOFTWARE_VERSION                      (uint8_t) 1
-#define SOFTWARE_REVISION                     (uint8_t) 33
+#define SOFTWARE_REVISION                     (uint8_t) 34
 
 // scanner debug settings
 #define DEBUG_SCAN_LINES                      128
