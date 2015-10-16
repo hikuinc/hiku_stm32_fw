@@ -498,7 +498,7 @@ int main(void)
 			GPIO_InitTypeDef  GPIO_InitStruct;
 			/*##-2- Configure peripheral GPIO ##########################################*/  
 			/* UART TX GPIO pin configuration  */
-			GPIO_InitStruct.Pin       = USARTx_TX_PIN;
+			GPIO_InitStruct.Pin       = USARTx_RX_PIN;
 			GPIO_InitStruct.Mode      = GPIO_MODE_INPUT;
 			GPIO_InitStruct.Pull      = GPIO_PULLDOWN;
 			GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
@@ -597,7 +597,7 @@ int main(void)
 			GPIO_InitTypeDef  GPIO_InitStruct;
 			/*##-2- Configure peripheral GPIO ##########################################*/  
 			/* UART TX GPIO pin configuration  */
-			GPIO_InitStruct.Pin       = USARTx_TX_PIN;
+			GPIO_InitStruct.Pin       = USARTx_RX_PIN;
 			GPIO_InitStruct.Mode      = GPIO_MODE_INPUT;
 			GPIO_InitStruct.Pull      = GPIO_PULLUP;
 			GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
