@@ -493,6 +493,21 @@ int main(void)
 
 	UART_Config(SCAN_CMD_NONE);
 
+	if (scanCmd == SCAN_CMD_MIC_SCAN_INSTANT){
+		
+			GPIO_InitTypeDef  GPIO_InitStruct;
+			/*##-2- Configure peripheral GPIO ##########################################*/  
+			/* UART TX GPIO pin configuration  */
+			GPIO_InitStruct.Pin       = USARTx_TX_PIN;
+			GPIO_InitStruct.Mode      = GPIO_MODE_INPUT;
+			GPIO_InitStruct.Pull      = GPIO_PULLDOWN;
+			GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
+
+			HAL_GPIO_Init(USARTx_TX_GPIO_PORT, &GPIO_InitStruct);
+	
+	}
+	
+	
 	AudioPacketBuf[0] = ScanPacketBuf[0] = (PACKET_HDR >> 24) & 0xFF;
 	AudioPacketBuf[1] = ScanPacketBuf[1] = (PACKET_HDR >> 16) & 0xFF;
 	AudioPacketBuf[2] = ScanPacketBuf[2] = (PACKET_HDR >> 8) & 0xFF;
@@ -578,6 +593,19 @@ int main(void)
 			uint32_t uart_state;
 			uint32_t scan_repeat;
 			setScannerLED(0);
+			
+			GPIO_InitTypeDef  GPIO_InitStruct;
+			/*##-2- Configure peripheral GPIO ##########################################*/  
+			/* UART TX GPIO pin configuration  */
+			GPIO_InitStruct.Pin       = USARTx_TX_PIN;
+			GPIO_InitStruct.Mode      = GPIO_MODE_INPUT;
+			GPIO_InitStruct.Pull      = GPIO_PULLUP;
+			GPIO_InitStruct.Speed     = GPIO_SPEED_HIGH;
+
+			HAL_GPIO_Init(USARTx_TX_GPIO_PORT, &GPIO_InitStruct);
+			
+			
+			
 			if (scanCmd == SCAN_CMD_MIC_SCAN_INSTANT)
 				while (HAL_GetTick() < SCAN_PACKET_DELAY);
 			for (scan_repeat=0;scan_repeat<SCAN_REPEAT_RESULT; scan_repeat++) {
